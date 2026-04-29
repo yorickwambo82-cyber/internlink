@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USER & AUTH ───────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          String   @default("STUDENT") // STUDENT, COMPANY, SUPERVISOR, ADMIN
+  avatar        String?
+  verified      Boolean  @default(false)
+  active        Boolean  @default(true)
+  otpCode       String?
+  otpExpiresAt  DateTime?
+  resetToken    String?
+  resetExpiresAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  studentProfile  StudentProfile?
+  companyProfile  CompanyProfile?
+  supervisorProfile SupervisorProfile?
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+}
+
+// ─── STUDENT PROFILE ───────────────────────────────────────
+
+model StudentProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  university    String?
+  fieldOfStudy  String?
+  year          String?
+  cvUrl         String?
+  skills        String?  // JSON array stored as string
+  portfolioUrl  String?
+  bio           String?
+  location      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+  reviews      Review[]
+}
+
+// ─── COMPANY PROFILE ───────────────────────────────────────
+
+model CompanyProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  companyName       String
+  registrationNum   String?
+  industry          String?
+  description       String?
+  website           String?
+  location          String?
+  city              String?
+  logoUrl           String?
+  verified          Boolean  @default(false) // admin must verify
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers      Offer[]
+  supervisors SupervisorProfile[]
+  reviews     Review[]
+}
+
+// ─── SUPERVISOR PROFILE ────────────────────────────────────
+
+model SupervisorProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  companyId   String
+  department  String?
+  title       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reports Report[]
+}
+
+// ─── CATEGORIES ────────────────────────────────────────────
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  offers Offer[]
+}
+
+// ─── INTERNSHIP / APPRENTICESHIP OFFERS ────────────────────
+
+model Offer {
+  id          String   @id @default(cuid())
+  companyId   String
+  categoryId  String?
+  title       String
+  description String   // rich text / HTML
+  requirements String?
+  skills      String?  // JSON array of tags
+  type        String   @default("INTERNSHIP") // INTERNSHIP, APPRENTICESHIP
+  duration    String?  // e.g., "3 months", "6 weeks"
+  startDate   String?  // flexible date or "Flexible"
+  stipend     String?  // XAF amount or "Unpaid"
+  location    String?
+  city        String?
+  remoteType  String   @default("ON_SITE") // ON_SITE, REMOTE, HYBRID
+  slots       Int      @default(1)
+  deadline    DateTime?
+  status      String   @default("ACTIVE") // ACTIVE, CLOSED, PAUSED
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category     Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  applications Application[]
+}
+
+// ─── APPLICATIONS ──────────────────────────────────────────
+
+model Application {
+  id          String   @id @default(cuid())
+  studentId   String
+  offerId     String
+  coverLetter String?
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, IN_PROGRESS, COMPLETED, CANCELLED
+  appliedAt   DateTime @default(now())
+  acceptedAt  DateTime?
+  completedAt DateTime?
+  updatedAt   DateTime @updatedAt
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  offer   Offer          @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  reports Report[]
+  certificate Certificate?
+
+  @@unique([studentId, offerId]) // one application per offer per student
+}
+
+// ─── REPORTS (Weekly/Monthly) ─────────────────────────────
+
+model Report {
+  id             String   @id @default(cuid())
+  applicationId  String
+  supervisorId   String?
+  weekNumber     Int
+  activities     String
+  challenges     String?
+  nextPlan       String?
+  fileUrl        String?
+  fileName       String?
+  status         String   @default("SUBMITTED") // SUBMITTED, VALIDATED, REVISION_NEEDED
+  supervisorComment String?
+  validatedAt    DateTime?
+  submittedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  application Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  supervisor  SupervisorProfile? @relation(fields: [supervisorId], references: [id], onDelete: SetNull)
+}
+
+// ─── CERTIFICATES ──────────────────────────────────────────
+
+model Certificate {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  certificateNumber String @unique
+  issuedAt      DateTime @default(now())
+  pdfUrl        String?
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+// ─── REVIEWS ───────────────────────────────────────────────
+
+model Review {
+  id          String   @id @default(cuid())
+  studentId   String
+  companyId   String
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  company CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── REPORT GUIDE ──────────────────────────────────────────
+
+model ReportGuide {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   // rich text / HTML
+  templateFileUrl String?
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── AUDIT LOGS ────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ─── SYSTEM CONFIG ─────────────────────────────────────────
+
+model SystemConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
