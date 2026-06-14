@@ -56,6 +56,7 @@ export async function GET(request: Request) {
           studentProfile: { select: { id: true, university: true, fieldOfStudy: true } },
           companyProfile: { select: { id: true, companyName: true, verified: true } },
           supervisorProfile: { select: { id: true, department: true, title: true } },
+          subscription: { select: { plan: true, status: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -159,6 +160,73 @@ export async function PUT(request: Request) {
     })
   } catch (error) {
     console.error('Update user error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const authUser = getUserFromRequest(request)
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    if (authUser.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    await db.user.delete({
+      where: { id: userId },
+    })
+
+    // Create audit log
+    await db.auditLog.create({
+      data: {
+        userId: authUser.userId,
+        action: 'DELETE_USER',
+        entity: 'User',
+        entityId: userId,
+        details: `User ${user.name} (${user.email}) - DELETED`,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'User deleted successfully',
+    })
+  } catch (error) {
+    console.error('Delete user error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

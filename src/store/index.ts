@@ -10,9 +10,11 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  plan: string | null;
   login: (user: User, token: string) => void;
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
+  setPlan: (plan: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,12 +23,14 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      plan: null,
       login: (user, token) => set({ user, token, isAuthenticated: true }),
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => set({ user: null, token: null, isAuthenticated: false, plan: null }),
       updateUser: (updates) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...updates } : null,
         })),
+      setPlan: (plan) => set({ plan }),
     }),
     {
       name: 'internlink-auth',
@@ -34,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
+        plan: state.plan,
       }),
     }
   )
@@ -139,3 +144,27 @@ export const useThemeStore = create<ThemeState>()(
     }
   )
 );
+
+// ─── LANGUAGE STORE ───────────────────────────────────────
+
+export type Language = 'en' | 'fr';
+
+interface LangState {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  toggleLanguage: () => void;
+}
+
+export const useLangStore = create<LangState>()(
+  persist(
+    (set) => ({
+      language: 'en',
+      setLanguage: (lang) => set({ language: lang }),
+      toggleLanguage: () => set((state) => ({ language: state.language === 'en' ? 'fr' : 'en' })),
+    }),
+    {
+      name: 'internlink-lang',
+    }
+  )
+);
+

@@ -13,12 +13,14 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { useAuthStore, useNavStore } from '@/store';
+import { useAuthStore, useNavStore, useLangStore } from '@/store';
+import { dictionaries } from '@/lib/dictionaries';
 import StatCard from '@/components/shared/StatCard';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -43,6 +45,7 @@ export default function CompanyDashboard() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const navigate = useNavStore((s) => s.navigate);
+  const language = useLangStore((s) => s.language);
   const companyId = user?.companyProfile?.id;
 
   const [applications, setApplications] = useState<Application[]>([]);
@@ -150,11 +153,11 @@ export default function CompanyDashboard() {
     >
       {/* Welcome */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Welcome back, {user?.companyProfile?.companyName || user?.name || 'Company'} 👋
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+          {dictionaries[language].dashboard.welcomeCompany.replace('{name}', user?.companyProfile?.companyName || user?.name || 'Company')} <Sparkles className="w-6 h-6 text-amber-500 animate-pulse" />
         </h1>
         <p className="text-muted-foreground mt-1">
-          Here&apos;s an overview of your internship programs.
+          {dictionaries[language].dashboard.overview}
         </p>
       </motion.div>
 

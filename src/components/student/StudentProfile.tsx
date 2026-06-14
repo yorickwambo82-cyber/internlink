@@ -151,11 +151,11 @@ export default function StudentProfile() {
 
   const initials = form.name
     ? form.name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
     : 'ST';
 
   if (loading) {
@@ -273,7 +273,7 @@ export default function StudentProfile() {
               </Label>
               <Input
                 id="phone"
-                placeholder="+237 6XX XXX XXX"
+                placeholder="+237 655022702"
                 value={form.phone}
                 onChange={(e) => updateField('phone', e.target.value)}
               />

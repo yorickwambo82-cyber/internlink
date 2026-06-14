@@ -48,7 +48,11 @@ export async function GET(request: Request) {
     }
 
     if (status) {
-      where.status = status
+      if (status.includes(',')) {
+        where.status = { in: status.split(',') }
+      } else {
+        where.status = status
+      }
     }
 
     const applications = await db.application.findMany({
@@ -62,7 +66,9 @@ export async function GET(request: Request) {
             year: true,
             skills: true,
             location: true,
-            user: { select: { id: true, name: true, email: true, avatar: true } },
+            user: { select: { id: true, name: true, email: true, phone: true, avatar: true } },
+            reviews: { select: { rating: true } },
+            applications: { select: { status: true } },
           },
         },
         offer: {
@@ -115,11 +121,26 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { offerId, coverLetter } = body
+    const { offerId, coverLetter, cvUrl, schoolAttestationUrl, motivationLetterUrl, transcriptUrl, expectedStartDate, selectedDuration } = body
 
     if (!offerId) {
       return NextResponse.json(
         { success: false, error: 'Offer ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Require all documents
+    if (!cvUrl || !schoolAttestationUrl || !motivationLetterUrl || !transcriptUrl) {
+      return NextResponse.json(
+        { success: false, error: 'All required documents (CV, School Attestation, Motivation Letter, Transcript) must be uploaded.' },
+        { status: 400 }
+      )
+    }
+
+    if (!expectedStartDate || !selectedDuration) {
+      return NextResponse.json(
+        { success: false, error: 'Proposed Start Date and Duration are required.' },
         { status: 400 }
       )
     }
@@ -135,6 +156,23 @@ export async function POST(request: Request) {
         { status: 404 }
       )
     }
+
+    // ── PLAN LIMIT CHECK ────────────────────────────────────
+    const PLAN_LIMITS: Record<string, number> = { STARTER: 3, SCHOLAR: 15, PRO: Infinity };
+    let sub = await db.subscription.findUnique({ where: { userId: authUser.userId } });
+    if (!sub) {
+      sub = await db.subscription.create({ data: { userId: authUser.userId, plan: 'STARTER', status: 'ACTIVE' } });
+    }
+    const plan = (sub.expiresAt && new Date() > sub.expiresAt && sub.plan !== 'STARTER') ? 'STARTER' : sub.plan;
+    const limit = PLAN_LIMITS[plan] ?? 3;
+    const totalApplied = await db.application.count({ where: { studentId: studentProfile.id } });
+    if (totalApplied >= limit) {
+      return NextResponse.json(
+        { success: false, error: 'PLAN_LIMIT_REACHED', plan },
+        { status: 403 }
+      )
+    }
+    // ────────────────────────────────────────────────────────
 
     // Check if already applied
     const existingApplication = await db.application.findUnique({
@@ -173,6 +211,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate chosen duration
+    const dur = parseInt(selectedDuration);
+    if (dur < offer.minDuration || dur > offer.maxDuration) {
+      return NextResponse.json(
+        { success: false, error: `Duration must be between ${offer.minDuration} and ${offer.maxDuration} months.` },
+        { status: 400 }
+      )
+    }
+
     // Check deadline
     if (offer.deadline && new Date() > new Date(offer.deadline)) {
       return NextResponse.json(
@@ -193,12 +240,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create application
+    // Create application with documents
     const application = await db.application.create({
       data: {
         studentId: studentProfile.id,
         offerId,
         coverLetter: coverLetter || null,
+        cvUrl,
+        schoolAttestationUrl,
+        motivationLetterUrl,
+        transcriptUrl,
+        expectedStartDate: new Date(expectedStartDate),
+        selectedDuration: dur,
       },
       include: {
         student: {
@@ -230,7 +283,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Create application error:', error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: 'Internal server error', details: String(error) },
       { status: 500 }
     )
   }

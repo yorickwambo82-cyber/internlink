@@ -13,6 +13,18 @@ import {
   ShieldCheck,
   BarChart3,
   Activity,
+  XCircle,
+  PlayCircle,
+  PauseCircle,
+  Check,
+  AlertCircle,
+  FolderPlus,
+  Edit3,
+  Trash2,
+  ClipboardList,
+  Banknote,
+  Settings,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -36,6 +48,16 @@ import StatCard from '@/components/shared/StatCard';
 import EmptyState from '@/components/shared/EmptyState';
 import type { AuditLog, PlatformStats } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const containerVariants = {
@@ -62,18 +84,19 @@ interface DashboardStats {
   completionRate: number;
   applicationsByStatus: Record<string, number>;
   recentSignups: number;
+  totalRevenue: number;
 }
 
-const actionIconMap: Record<string, string> = {
-  APPROVE_COMPANY: '✅',
-  REJECT_COMPANY: '❌',
-  ACTIVATE_USER: '🟢',
-  SUSPEND_USER: '🔴',
-  VERIFY_USER: '✔️',
-  UNVERIFY_USER: '⚠️',
-  CREATE_CATEGORY: '📁',
-  UPDATE_CATEGORY: '✏️',
-  DELETE_CATEGORY: '🗑️',
+const actionIconMap: Record<string, React.ReactNode> = {
+  APPROVE_COMPANY: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+  REJECT_COMPANY: <XCircle className="w-5 h-5 text-red-500" />,
+  ACTIVATE_USER: <PlayCircle className="w-5 h-5 text-green-500" />,
+  SUSPEND_USER: <PauseCircle className="w-5 h-5 text-red-500" />,
+  VERIFY_USER: <Check className="w-5 h-5 text-blue-500" />,
+  UNVERIFY_USER: <AlertCircle className="w-5 h-5 text-amber-500" />,
+  CREATE_CATEGORY: <FolderPlus className="w-5 h-5 text-indigo-500" />,
+  UPDATE_CATEGORY: <Edit3 className="w-5 h-5 text-orange-500" />,
+  DELETE_CATEGORY: <Trash2 className="w-5 h-5 text-red-500" />,
 };
 
 export default function AdminDashboard() {
@@ -84,6 +107,11 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Settings state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsData, setSettingsData] = useState({ email: user?.email || '', password: '', confirmPassword: '' });
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -111,6 +139,7 @@ export default function AdminDashboard() {
           completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
           applicationsByStatus: d.applications?.byStatus || {},
           recentSignups: d.users?.recentSignups || 0,
+          totalRevenue: d.revenue?.total || 0,
         });
       }
 
@@ -128,6 +157,39 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSaveSettings = async () => {
+    if (settingsData.password && settingsData.password !== settingsData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setSettingsSaving(true);
+    try {
+      const payload: any = {};
+      if (settingsData.email !== user?.email) payload.email = settingsData.email;
+      if (settingsData.password) payload.password = settingsData.password;
+
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Settings updated successfully');
+        setSettingsOpen(false);
+      } else {
+        toast.error(data.error || 'Failed to update settings');
+      }
+    } catch (err) {
+      toast.error('Something went wrong');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   // Chart data derived from applicationsByStatus
   const barChartData = stats
@@ -171,8 +233,8 @@ export default function AdminDashboard() {
     >
       {/* Welcome */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Admin Dashboard 👋
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+          Admin Dashboard <ShieldCheck className="w-7 h-7 text-primary animate-pulse" />
         </h1>
         <p className="text-muted-foreground mt-1">
           Welcome back, {user?.name || 'Admin'}. Here&apos;s your platform overview.
@@ -180,7 +242,14 @@ export default function AdminDashboard() {
       </motion.div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Banknote}
+          label="Total Revenue"
+          value={`${stats?.totalRevenue?.toLocaleString() ?? 0} XAF`}
+          delay={0}
+          accentColor="bg-green-500"
+        />
         <StatCard
           icon={GraduationCap}
           label="Total Students"
@@ -369,8 +438,8 @@ export default function AdminDashboard() {
                       key={log.id}
                       className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                     >
-                      <div className="text-lg mt-0.5 shrink-0">
-                        {actionIconMap[log.action] || '📋'}
+                      <div className="text-lg mt-0.5 shrink-0 flex items-center justify-center">
+                        {actionIconMap[log.action] || <ClipboardList className="w-5 h-5 text-muted-foreground" />}
                       </div>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2">
@@ -403,7 +472,7 @@ export default function AdminDashboard() {
               <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <Button
                   variant="outline"
                   className="h-auto py-4 flex flex-col items-center gap-2"
@@ -418,7 +487,7 @@ export default function AdminDashboard() {
                   onClick={() => navigate('admin-companies')}
                 >
                   <ShieldCheck className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">Approve Companies</span>
+                  <span className="text-sm font-medium">Companies</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -426,13 +495,69 @@ export default function AdminDashboard() {
                   onClick={() => navigate('admin-audit')}
                 >
                   <BarChart3 className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">View Analytics</span>
+                  <span className="text-sm font-medium">Analytics</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  <Settings className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">Settings</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+
+      {/* Admin Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Admin Settings</DialogTitle>
+            <DialogDescription>Update your email and password.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={settingsData.email}
+                onChange={(e) => setSettingsData({ ...settingsData, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">New Password (leave blank to keep current)</Label>
+              <Input
+                id="password"
+                type="password"
+                value={settingsData.password}
+                onChange={(e) => setSettingsData({ ...settingsData, password: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={settingsData.confirmPassword}
+                onChange={(e) => setSettingsData({ ...settingsData, confirmPassword: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)} disabled={settingsSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSettings} disabled={settingsSaving}>
+              {settingsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

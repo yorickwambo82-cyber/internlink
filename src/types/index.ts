@@ -1,7 +1,7 @@
 // InternLink Type Definitions
 
 export type UserRole = 'STUDENT' | 'COMPANY' | 'SUPERVISOR' | 'ADMIN';
-export type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'DID_NOT_SHOW';
 export type OfferStatus = 'ACTIVE' | 'CLOSED' | 'PAUSED';
 export type OfferType = 'INTERNSHIP' | 'APPRENTICESHIP';
 export type RemoteType = 'ON_SITE' | 'REMOTE' | 'HYBRID';
@@ -21,6 +21,7 @@ export interface User {
   studentProfile?: StudentProfile;
   companyProfile?: CompanyProfile;
   supervisorProfile?: SupervisorProfile;
+  subscription?: { plan: string; status: string };
 }
 
 export interface StudentProfile {
@@ -34,6 +35,8 @@ export interface StudentProfile {
   portfolioUrl?: string;
   bio?: string;
   location?: string;
+  reviews?: { rating: number }[];
+  applications?: { status: string }[];
 }
 
 export interface CompanyProfile {
@@ -84,6 +87,8 @@ export interface Offer {
   city?: string;
   remoteType: RemoteType;
   slots: number;
+  minDuration?: number;
+  maxDuration?: number;
   deadline?: string;
   status: OfferStatus;
   views: number;
@@ -99,7 +104,13 @@ export interface Application {
   studentId: string;
   offerId: string;
   coverLetter?: string;
+  cvUrl?: string;
+  schoolAttestationUrl?: string;
+  motivationLetterUrl?: string;
+  transcriptUrl?: string;
   status: ApplicationStatus;
+  expectedStartDate?: string;
+  selectedDuration?: number;
   appliedAt: string;
   acceptedAt?: string;
   completedAt?: string;

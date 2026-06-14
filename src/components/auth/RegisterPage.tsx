@@ -20,6 +20,7 @@ import {
   MapPin,
   Briefcase,
   CheckCircle2,
+  Home,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -181,6 +182,16 @@ export default function RegisterPage() {
       >
         {/* Header */}
         <div className="text-center mb-6">
+          {/* Back to Home */}
+          <div className="flex justify-start mb-4">
+            <button
+              onClick={() => navigate('landing')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Home className="h-4 w-4" />
+              Back to Home
+            </button>
+          </div>
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
@@ -406,7 +417,7 @@ export default function RegisterPage() {
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="+237 6XX XXX XXX"
+                          placeholder="+237 655022702"
                           className="pl-9 h-9 text-sm"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}

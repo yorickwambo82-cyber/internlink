@@ -10,11 +10,13 @@ import {
   Search,
   BookOpen,
   FileBadge,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuthStore, useNavStore } from '@/store';
+import { useAuthStore, useNavStore, useLangStore } from '@/store';
+import { dictionaries } from '@/lib/dictionaries';
 import StatCard from '@/components/shared/StatCard';
 import ApplicationCard from '@/components/shared/ApplicationCard';
 import OfferCard from '@/components/shared/OfferCard';
@@ -38,6 +40,7 @@ export default function StudentDashboard() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const navigate = useNavStore((s) => s.navigate);
+  const language = useLangStore((s) => s.language);
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -108,11 +111,11 @@ export default function StudentDashboard() {
     >
       {/* Welcome */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Welcome back, {user?.name || 'Student'} 👋
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+          {dictionaries[language].dashboard.welcomeStudent.replace('{name}', user?.name || 'Student')} <Sparkles className="w-6 h-6 text-amber-500 animate-pulse" />
         </h1>
         <p className="text-muted-foreground mt-1">
-          Here&apos;s an overview of your internship journey.
+          {dictionaries[language].dashboard.overview}
         </p>
       </motion.div>
 

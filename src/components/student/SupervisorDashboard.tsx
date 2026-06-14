@@ -31,12 +31,17 @@ import {
   Clock,
   User,
   MessageSquare,
+  Sparkles,
+  Paperclip,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLangStore } from '@/store';
+import { dictionaries } from '@/lib/dictionaries';
 import type { Report, Application } from '@/types';
 
 export function SupervisorDashboard() {
   const { user, token } = useAuthStore();
+  const language = useLangStore((s) => s.language);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -147,7 +152,9 @@ export function SupervisorDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h2 className="text-2xl font-bold">Welcome back, {user?.name} 👋</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {dictionaries[language].dashboard.welcomeStudent.replace('{name}', user?.name || 'Supervisor')} <Sparkles className="w-6 h-6 text-amber-500 animate-pulse" />
+        </h2>
         <p className="text-muted-foreground">
           Review and validate intern reports
         </p>
@@ -218,7 +225,7 @@ export function SupervisorDashboard() {
                         <StatusBadge status={report.status} size="sm" />
                         {report.fileName && (
                           <Badge variant="outline" className="text-xs">
-                            📎 {report.fileName}
+                            <Paperclip className="w-3 h-3 mr-1" /> {report.fileName}
                           </Badge>
                         )}
                       </div>

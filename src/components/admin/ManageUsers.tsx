@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  EyeOff,
+  PlayCircle,
+  PauseCircle,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,19 +152,17 @@ export default function ManageUsers() {
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       if (action === 'delete') {
-        // For delete, we'd need a DELETE endpoint. Use PUT to suspend as workaround.
-        // Since there's no DELETE endpoint in the API, we'll suspend instead
-        const res = await fetch('/api/admin/users', {
-          method: 'PUT',
+        const res = await fetch(`/api/admin/users?userId=${userId}`, {
+          method: 'DELETE',
           headers,
-          body: JSON.stringify({ userId, active: false }),
         });
         const data = await res.json();
         if (data.success) {
-          toast.success('User suspended successfully');
+          toast.success('User deleted successfully');
+          if (selectedUser?.id === userId) setSelectedUser(null);
           fetchUsers();
         } else {
-          toast.error(data.error || 'Failed to suspend user');
+          toast.error(data.error || 'Failed to delete user');
         }
         return;
       }
@@ -296,7 +295,11 @@ export default function ManageUsers() {
                     </TableHeader>
                     <TableBody>
                       {users.map((u) => (
-                        <TableRow key={u.id}>
+                        <TableRow 
+                          key={u.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedUser(u)}
+                        >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">
@@ -344,8 +347,9 @@ export default function ManageUsers() {
                                       size="sm"
                                       className="h-7 w-7 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
                                       disabled={actionLoading === u.id}
+                                      onClick={(e) => e.stopPropagation()}
                                     >
-                                      <EyeOff className="h-3.5 w-3.5" />
+                                      <PauseCircle className="h-3.5 w-3.5" />
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
@@ -374,9 +378,12 @@ export default function ManageUsers() {
                                   size="sm"
                                   className="h-7 w-7 p-0 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
                                   disabled={actionLoading === u.id}
-                                  onClick={() => handleUserAction(u.id, 'activate')}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUserAction(u.id, 'activate');
+                                  }}
                                 >
-                                  <Eye className="h-3.5 w-3.5" />
+                                  <PlayCircle className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                               {!u.verified && (
@@ -385,7 +392,10 @@ export default function ManageUsers() {
                                   size="sm"
                                   className="h-7 w-7 p-0 text-sky-500 hover:text-sky-600 hover:bg-sky-50"
                                   disabled={actionLoading === u.id}
-                                  onClick={() => handleUserAction(u.id, 'verify')}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUserAction(u.id, 'verify');
+                                  }}
                                 >
                                   <ShieldCheck className="h-3.5 w-3.5" />
                                 </Button>
@@ -407,7 +417,6 @@ export default function ManageUsers() {
                                     <AlertDialogDescription>
                                       Are you sure you want to delete{' '}
                                       <strong>{u.name}</strong>? This action cannot be undone.
-                                      The user will be suspended instead as a safety measure.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -528,6 +537,21 @@ export default function ManageUsers() {
                   </p>
                 </div>
               )}
+              <div className="text-sm border-t pt-3">
+                <p className="font-medium mb-1">Subscription Details</p>
+                {selectedUser.subscription ? (
+                  <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                    <div>
+                      Plan: <span className="font-medium text-foreground">{selectedUser.subscription.plan}</span>
+                    </div>
+                    <div>
+                      Status: <StatusBadge status={selectedUser.subscription.status} size="sm" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No active subscription (Free limits apply)</p>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight, GraduationCap, Building2, ShieldCheck } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight, GraduationCap, Building2, ShieldCheck, Home, ArrowLeft, KeyRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuthStore, useNavStore } from '@/store';
 import { toast } from 'sonner';
 import type { UserRole, PageView } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const testAccounts = [
   { label: 'Student', email: 'student@test.com', password: 'student123', icon: GraduationCap },
@@ -31,6 +37,16 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Forgot password state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [fpStep, setFpStep] = useState<'email' | 'code' | 'newpass'>('email');
+  const [fpEmail, setFpEmail] = useState('');
+  const [fpOtp, setFpOtp] = useState('');
+  const [fpNewPass, setFpNewPass] = useState('');
+  const [fpConfirm, setFpConfirm] = useState('');
+  const [fpLoading, setFpLoading] = useState(false);
+  const [fpDevOtp, setFpDevOtp] = useState<string | null>(null);
 
   const { login } = useAuthStore();
   const navigate = useNavStore((s) => s.navigate);
@@ -73,6 +89,54 @@ export default function LoginPage() {
   const handleTestLogin = (testEmail: string, testPassword: string) => {
     setEmail(testEmail);
     setPassword(testPassword);
+  };
+
+  const handleForgotRequest = async () => {
+    if (!fpEmail.trim()) { toast.error('Please enter your email'); return; }
+    setFpLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: fpEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFpDevOtp(data.__dev_otp ?? null);
+        setFpStep('code');
+        toast.success('Reset code sent! (See the simulation box below)');
+      } else {
+        toast.error(data.error || 'Request failed');
+      }
+    } catch { toast.error('Something went wrong'); }
+    finally { setFpLoading(false); }
+  };
+
+  const handleForgotVerify = () => {
+    if (fpOtp.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setFpStep('newpass');
+  };
+
+  const handleForgotReset = async () => {
+    if (fpNewPass.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (fpNewPass !== fpConfirm) { toast.error('Passwords do not match'); return; }
+    setFpLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: fpEmail, otp: fpOtp, newPassword: fpNewPass }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Password updated! You can now log in.');
+        setForgotOpen(false);
+        setFpStep('email'); setFpEmail(''); setFpOtp(''); setFpNewPass(''); setFpConfirm(''); setFpDevOtp(null);
+      } else {
+        toast.error(data.error || 'Reset failed');
+      }
+    } catch { toast.error('Something went wrong'); }
+    finally { setFpLoading(false); }
   };
 
   return (
@@ -118,7 +182,7 @@ export default function LoginPage() {
               Bridge the Gap Between Education and Employment
             </h2>
             <p className="text-primary-foreground/80 text-base leading-relaxed">
-              Connect with verified companies, find meaningful internships, submit reports, and earn your certificate — all in one place.
+              Connect with verified companies, find meaningful internships, submit reports, and earn your certificate all in one place.
             </p>
 
             {/* Feature highlights */}
@@ -146,6 +210,14 @@ export default function LoginPage() {
         className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12"
       >
         <div className="w-full max-w-md space-y-6">
+          {/* Back to Home */}
+          <button
+            onClick={() => navigate('landing')}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Home className="h-4 w-4" />
+            Back to Home
+          </button>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-2">
             <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
@@ -187,7 +259,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline font-medium"
-                  onClick={() => toast.info('Password reset feature coming soon!')}
+                  onClick={() => { setForgotOpen(true); setFpStep('email'); }}
                 >
                   Forgot password?
                 </button>
@@ -283,6 +355,92 @@ export default function LoginPage() {
           </Card>
         </div>
       </motion.div>
+
+      {/* ── Forgot Password Dialog ── */}
+      <Dialog open={forgotOpen} onOpenChange={(o) => { setForgotOpen(o); if (!o) { setFpStep('email'); setFpDevOtp(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-primary" />
+              {fpStep === 'email' && 'Reset Password'}
+              {fpStep === 'code' && 'Enter Reset Code'}
+              {fpStep === 'newpass' && 'Set New Password'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {fpStep === 'email' && (
+              <>
+                <p className="text-sm text-muted-foreground">Enter your account email to receive a 6-digit reset code.</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fp-email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input id="fp-email" type="email" placeholder="you@example.com" value={fpEmail}
+                      onChange={(e) => setFpEmail(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handleForgotRequest} disabled={fpLoading}>
+                  {fpLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending...</> : 'Send Reset Code'}
+                </Button>
+              </>
+            )}
+
+            {fpStep === 'code' && (
+              <>
+                <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to <strong>{fpEmail}</strong>.</p>
+                {fpDevOtp && (
+                  <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">🧪 Simulation — Your reset code:</p>
+                    <p className="text-2xl font-mono font-bold text-amber-700 dark:text-amber-300 tracking-widest">{fpDevOtp}</p>
+                    <p className="text-xs text-amber-600 mt-1">In production, this code would be sent to your email.</p>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="fp-otp">6-Digit Code</Label>
+                  <input id="fp-otp" type="text" maxLength={6} placeholder="123456" value={fpOtp}
+                    onChange={(e) => setFpOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full text-center text-2xl tracking-widest px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setFpStep('email')}><ArrowLeft className="w-4 h-4 mr-1" />Back</Button>
+                  <Button className="flex-1" onClick={handleForgotVerify}>Verify Code</Button>
+                </div>
+              </>
+            )}
+
+            {fpStep === 'newpass' && (
+              <>
+                <p className="text-sm text-muted-foreground">Choose a strong new password for your account.</p>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fp-newpass">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input id="fp-newpass" type="password" placeholder="Min. 6 characters" value={fpNewPass}
+                        onChange={(e) => setFpNewPass(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fp-confirm">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input id="fp-confirm" type="password" placeholder="Re-enter password" value={fpConfirm}
+                        onChange={(e) => setFpConfirm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handleForgotReset} disabled={fpLoading}>
+                  {fpLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : 'Set New Password'}
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

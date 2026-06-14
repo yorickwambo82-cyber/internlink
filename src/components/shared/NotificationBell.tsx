@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, Check, CheckCheck } from 'lucide-react';
+import { Bell, Check, CheckCheck, CheckCircle2, AlertCircle, XCircle, Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -77,13 +77,13 @@ export default function NotificationBell() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'SUCCESS':
-        return '🟢';
+        return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
       case 'WARNING':
-        return '🟡';
+        return <AlertCircle className="w-5 h-5 text-amber-500" />;
       case 'ERROR':
-        return '🔴';
+        return <XCircle className="w-5 h-5 text-red-500" />;
       default:
-        return '🔵';
+        return <Info className="w-5 h-5 text-blue-500" />;
     }
   };
 

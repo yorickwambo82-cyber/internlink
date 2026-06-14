@@ -14,6 +14,7 @@ import {
   GraduationCap,
   BookOpen,
   Filter,
+  Star,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -320,6 +321,24 @@ export default function ViewApplications() {
                               )}
                             </div>
 
+                            {/* Student Metrics */}
+                            {app.student && (
+                              <div className="flex gap-4 text-xs font-medium pt-1">
+                                {app.student.reviews && app.student.reviews.length > 0 && (
+                                  <span className="flex items-center text-yellow-600">
+                                    <Star className="h-3 w-3 mr-1 fill-current" />
+                                    {(app.student.reviews.reduce((acc, rev) => acc + rev.rating, 0) / app.student.reviews.length).toFixed(1)} / 5 ({app.student.reviews.length} reviews)
+                                  </span>
+                                )}
+                                {app.student.applications && (
+                                  <span className="text-muted-foreground flex items-center">
+                                    <Award className="h-3 w-3 mr-1" />
+                                    {app.student.applications.filter(a => a.status === 'COMPLETED').length} Internships Completed
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
                             {/* Date & cover letter excerpt */}
                             <div className="text-xs text-muted-foreground">
                               Applied {formatDistanceToNow(new Date(app.appliedAt), { addSuffix: true })}
@@ -418,7 +437,81 @@ export default function ViewApplications() {
                                     </p>
                                   </div>
                                 )}
-                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-3 bg-muted/30 p-3 rounded-lg">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1">Student Details</p>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      {app.student?.user?.phone && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground block text-xs">Phone</span>
+                                          {app.student.user.phone}
+                                        </div>
+                                      )}
+                                      {app.student?.year && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">Year of Study</span>
+                                          {app.student.year}
+                                        </div>
+                                      )}
+                                      {app.student?.location && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">Location</span>
+                                          {app.student.location}
+                                        </div>
+                                      )}
+                                      {app.student?.skills && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground block text-xs">Skills</span>
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {(() => {
+                                              try {
+                                                const parsed = JSON.parse(app.student.skills);
+                                                return Array.isArray(parsed) ? parsed.map((s, i) => (
+                                                  <Badge key={i} variant="secondary" className="text-[10px]">{s}</Badge>
+                                                )) : app.student.skills;
+                                              } catch {
+                                                return app.student.skills;
+                                              }
+                                            })()}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3 bg-muted/30 p-3 rounded-lg">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1">Postulated Internship</p>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      {app.offer?.type && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">Type</span>
+                                          {app.offer.type}
+                                        </div>
+                                      )}
+                                      {app.offer?.remoteType && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">Work Mode</span>
+                                          {app.offer.remoteType.replace('_', ' ')}
+                                        </div>
+                                      )}
+                                      {app.offer?.city && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">City</span>
+                                          {app.offer.city}
+                                        </div>
+                                      )}
+                                      {app.offer?.stipend && (
+                                        <div>
+                                          <span className="text-muted-foreground block text-xs">Stipend</span>
+                                          {app.offer.stipend}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
                                   <div>
                                     <p className="text-xs font-medium text-muted-foreground">
                                       Applied On
@@ -449,6 +542,39 @@ export default function ViewApplications() {
                                       <p>{app.reports.length} submitted</p>
                                     </div>
                                   )}
+                                </div>
+                                <div className="space-y-2 pt-2 border-t">
+                                  <p className="text-xs font-medium text-muted-foreground">Documents</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {app.cvUrl && (
+                                      <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+                                        <a href={app.cvUrl} target="_blank" rel="noopener noreferrer">
+                                          <FileText className="h-3 w-3 mr-1" /> CV
+                                        </a>
+                                      </Button>
+                                    )}
+                                    {app.schoolAttestationUrl && (
+                                      <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+                                        <a href={app.schoolAttestationUrl} target="_blank" rel="noopener noreferrer">
+                                          <FileText className="h-3 w-3 mr-1" /> Attestation
+                                        </a>
+                                      </Button>
+                                    )}
+                                    {app.motivationLetterUrl && (
+                                      <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+                                        <a href={app.motivationLetterUrl} target="_blank" rel="noopener noreferrer">
+                                          <FileText className="h-3 w-3 mr-1" /> Motivation Letter
+                                        </a>
+                                      </Button>
+                                    )}
+                                    {app.transcriptUrl && (
+                                      <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+                                        <a href={app.transcriptUrl} target="_blank" rel="noopener noreferrer">
+                                          <FileText className="h-3 w-3 mr-1" /> Transcript
+                                        </a>
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               </motion.div>
                             )}

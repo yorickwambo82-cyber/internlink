@@ -15,6 +15,9 @@ import {
   Tag,
   CheckCircle2,
   Loader2,
+  FileText,
+  UploadCloud,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,10 +31,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useAuthStore, useNavStore } from '@/store';
 import StatusBadge from '@/components/shared/StatusBadge';
+import PlanUpgradeModal from '@/components/shared/PlanUpgradeModal';
 import type { Offer, Application } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -66,17 +71,41 @@ function getOfferTypeLabel(type: string) {
   }
 }
 
+function safeFormatDate(value: string | null | undefined, fmt: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return null;
+  return format(date, fmt);
+}
+
 export default function OfferDetail() {
   const token = useAuthStore((s) => s.token);
+  const authPlan = useAuthStore((s) => s.plan) || 'STARTER';
+  const setAuthPlan = useAuthStore((s) => s.setPlan);
   const selectedOfferId = useNavStore((s) => s.selectedOfferId);
   const navigate = useNavStore((s) => s.navigate);
 
   const [offer, setOffer] = useState<Offer | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Application Form State
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
-  const [coverLetter, setCoverLetter] = useState('');
+  const [applyStep, setApplyStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [coverLetter, setCoverLetter] = useState('');
+  const [expectedStartDate, setExpectedStartDate] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState<number>(3);
+  
+  // Files
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [attestationFile, setAttestationFile] = useState<File | null>(null);
+  const [motivationFile, setMotivationFile] = useState<File | null>(null);
+  const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
+
+  // Plan State
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
 
   // Fetch offer and applications
   useEffect(() => {
@@ -86,16 +115,27 @@ export default function OfferDetail() {
         const headers: Record<string, string> = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const [offerRes, appRes] = await Promise.all([
+        const [offerRes, appRes, subRes] = await Promise.all([
           fetch(`/api/offers/${selectedOfferId}`),
           fetch('/api/applications', { headers }),
+          fetch('/api/subscriptions', { headers }),
         ]);
 
         const offerData = await offerRes.json();
         const appData = await appRes.json();
+        const subData = await subRes.json();
 
-        if (offerData.success) setOffer(offerData.data);
+        if (offerData.success) {
+          setOffer(offerData.data);
+          setSelectedDuration(offerData.data.minDuration || 3);
+          
+          // Pre-fill expected start date if offer has a valid date string
+          if (offerData.data.startDate && !isNaN(new Date(offerData.data.startDate).getTime())) {
+            setExpectedStartDate(new Date(offerData.data.startDate).toISOString().split('T')[0]);
+          }
+        }
         if (appData.success) setApplications(appData.data);
+        if (subData.success && subData.data) setAuthPlan(subData.data.plan);
       } catch (err) {
         console.error('Failed to fetch offer detail:', err);
       } finally {
@@ -103,16 +143,54 @@ export default function OfferDetail() {
       }
     }
     fetchData();
-  }, [selectedOfferId, token]);
+  }, [selectedOfferId, token, setAuthPlan]);
 
   const alreadyApplied = applications.some(
     (a) => a.offerId === selectedOfferId
   );
 
+  const handleFileUpload = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) return data.url;
+      toast.error(data.error || 'Failed to upload file');
+      return null;
+    } catch {
+      toast.error('File upload failed');
+      return null;
+    }
+  };
+
   const handleApply = async () => {
     if (!selectedOfferId || !token) return;
+    
+    // Validate documents
+    if (!cvFile || !attestationFile || !motivationFile || !transcriptFile) {
+      toast.error('Please upload all required documents.');
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // 1. Upload files
+      const cvUrl = await handleFileUpload(cvFile);
+      const schoolAttestationUrl = await handleFileUpload(attestationFile);
+      const motivationLetterUrl = await handleFileUpload(motivationFile);
+      const transcriptUrl = await handleFileUpload(transcriptFile);
+
+      if (!cvUrl || !schoolAttestationUrl || !motivationLetterUrl || !transcriptUrl) {
+        setSubmitting(false);
+        return; // Stopped because a file failed
+      }
+
+      // 2. Submit application
       const res = await fetch('/api/applications', {
         method: 'POST',
         headers: {
@@ -122,18 +200,39 @@ export default function OfferDetail() {
         body: JSON.stringify({
           offerId: selectedOfferId,
           coverLetter: coverLetter || undefined,
+          cvUrl,
+          schoolAttestationUrl,
+          motivationLetterUrl,
+          transcriptUrl,
+          expectedStartDate: expectedStartDate || new Date().toISOString().split('T')[0],
+          selectedDuration: selectedDuration,
         }),
       });
 
       const data = await res.json();
+      
       if (!data.success) {
+        if (data.error === 'PLAN_LIMIT_REACHED') {
+          setApplyDialogOpen(false);
+          setUpgradeReason('You have reached the maximum number of applications for your current plan.');
+          setUpgradeModalOpen(true);
+          return;
+        }
         toast.error(data.error || 'Failed to apply');
         return;
       }
 
       toast.success('Application submitted successfully!');
       setApplyDialogOpen(false);
+      
+      // Reset form
       setCoverLetter('');
+      setCvFile(null);
+      setAttestationFile(null);
+      setMotivationFile(null);
+      setTranscriptFile(null);
+      setApplyStep(1);
+
       // Refresh applications
       setApplications((prev) => [...prev, data.data]);
     } catch {
@@ -142,6 +241,57 @@ export default function OfferDetail() {
       setSubmitting(false);
     }
   };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File | null>>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error('Only PDF files are allowed');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be under 5MB');
+        return;
+      }
+      setter(file);
+    }
+  };
+
+  const renderFileInput = (
+    id: string,
+    label: string,
+    file: File | null,
+    setter: React.Dispatch<React.SetStateAction<File | null>>
+  ) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm">{label} <span className="text-red-500">*</span></Label>
+      {file ? (
+        <div className="flex items-center justify-between p-2 border border-emerald-500/30 bg-emerald-500/5 rounded-md">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="text-sm font-medium truncate">{file.name}</span>
+          </div>
+          <button type="button" onClick={() => setter(null)} className="p-1 hover:bg-emerald-500/10 rounded-md transition-colors">
+            <X className="w-4 h-4 text-emerald-600" />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            type="file"
+            id={id}
+            accept=".pdf,application/pdf"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            onChange={(e) => handleFileChange(e, setter)}
+          />
+          <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer">
+            <UploadCloud className="w-4 h-4" />
+            <span className="text-sm">Click to upload PDF</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -220,47 +370,105 @@ export default function OfferDetail() {
                   Already Applied
                 </Button>
               ) : (
-                <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+                <Dialog open={applyDialogOpen} onOpenChange={(open) => {
+                  setApplyDialogOpen(open);
+                  if (!open) setApplyStep(1);
+                }}>
                   <DialogTrigger asChild>
                     <Button className="shrink-0">Apply Now</Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Apply for {offer.title}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 pt-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="coverLetter">Cover Letter</Label>
-                        <Textarea
-                          id="coverLetter"
-                          placeholder="Write a brief cover letter explaining why you're interested in this position..."
-                          rows={6}
-                          value={coverLetter}
-                          onChange={(e) => setCoverLetter(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Optional but recommended. Explain your motivation and relevant experience.
-                        </p>
+                    
+                    {applyStep === 1 && (
+                      <div className="space-y-4 pt-2">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 rounded-md text-sm mb-4">
+                          Please provide all required documents in PDF format to proceed with your application.
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {renderFileInput('cv', 'CV / Resume', cvFile, setCvFile)}
+                          {renderFileInput('attestation', 'School Attestation', attestationFile, setAttestationFile)}
+                          {renderFileInput('motivation', 'Motivation Letter', motivationFile, setMotivationFile)}
+                          {renderFileInput('transcript', 'Last Transcript', transcriptFile, setTranscriptFile)}
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t mt-6">
+                          <Button variant="outline" onClick={() => setApplyDialogOpen(false)}>Cancel</Button>
+                          <Button 
+                            onClick={() => setApplyStep(2)}
+                            disabled={!cvFile || !attestationFile || !motivationFile || !transcriptFile}
+                          >
+                            Next Step
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setApplyDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button onClick={handleApply} disabled={submitting}>
-                          {submitting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Submitting...
-                            </>
-                          ) : (
-                            'Submit Application'
-                          )}
-                        </Button>
+                    )}
+
+                    {applyStep === 2 && (
+                      <div className="space-y-4 pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="expectedStartDate">Proposed Start Date *</Label>
+                            <Input
+                              id="expectedStartDate"
+                              type="date"
+                              min={new Date().toISOString().split('T')[0]}
+                              value={expectedStartDate}
+                              onChange={(e) => setExpectedStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="selectedDuration">Desired Duration (Months) *</Label>
+                            <div className="flex items-center gap-3">
+                              <Input
+                                id="selectedDuration"
+                                type="number"
+                                min={offer.minDuration || 3}
+                                max={offer.maxDuration || 12}
+                                value={selectedDuration}
+                                onChange={(e) => setSelectedDuration(parseInt(e.target.value) || 3)}
+                              />
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                Range: {offer.minDuration || 3}-{offer.maxDuration || 12}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="coverLetter">Additional Cover Letter Message</Label>
+                          <Textarea
+                            id="coverLetter"
+                            placeholder="Write a brief message explaining why you're interested in this position..."
+                            rows={4}
+                            value={coverLetter}
+                            onChange={(e) => setCoverLetter(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Optional. You have already uploaded your formal motivation letter.
+                          </p>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 border-t mt-4">
+                          <Button variant="ghost" onClick={() => setApplyStep(1)}>Back</Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setApplyDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleApply} disabled={submitting}>
+                              {submitting ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                'Submit Application'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </DialogContent>
                 </Dialog>
               )}
@@ -301,12 +509,16 @@ export default function OfferDetail() {
                   </div>
                 </div>
               )}
-              {offer.duration && (
+               {(offer.minDuration || offer.maxDuration) && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Duration</p>
-                    <p className="font-medium text-sm">{offer.duration}</p>
+                    <p className="text-xs text-muted-foreground">Duration Range</p>
+                    <p className="font-medium text-sm">
+                      {offer.minDuration === offer.maxDuration 
+                        ? `${offer.minDuration} months`
+                        : `${offer.minDuration} - ${offer.maxDuration} months`}
+                    </p>
                   </div>
                 </div>
               )}
@@ -321,24 +533,24 @@ export default function OfferDetail() {
                   </div>
                 </div>
               )}
-              {offer.deadline && (
+              {offer.deadline && safeFormatDate(offer.deadline, 'MMM d, yyyy') && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Deadline</p>
                     <p className="font-medium text-sm">
-                      {format(new Date(offer.deadline), 'MMM d, yyyy')}
+                      {safeFormatDate(offer.deadline, 'MMM d, yyyy')}
                     </p>
                   </div>
                 </div>
               )}
-              {offer.startDate && (
+              {offer.startDate && safeFormatDate(offer.startDate, 'MMM d, yyyy') && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Start Date</p>
                     <p className="font-medium text-sm">
-                      {format(new Date(offer.startDate), 'MMM d, yyyy')}
+                      {safeFormatDate(offer.startDate, 'MMM d, yyyy')}
                     </p>
                   </div>
                 </div>
@@ -412,6 +624,18 @@ export default function OfferDetail() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <PlanUpgradeModal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        currentPlan={authPlan}
+        reason={upgradeReason}
+        onSuccess={(plan) => {
+          setAuthPlan(plan);
+          setUpgradeModalOpen(false);
+          toast.success(`Plan upgraded to ${plan}! You can now continue your application.`);
+        }}
+      />
     </motion.div>
   );
 }

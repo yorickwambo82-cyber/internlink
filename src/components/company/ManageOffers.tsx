@@ -50,6 +50,7 @@ import {
 import { useAuthStore } from '@/store';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
+import PlanUpgradeModal from '@/components/shared/PlanUpgradeModal';
 import type { Offer, Category, OfferType, RemoteType } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -73,7 +74,8 @@ interface OfferFormData {
   requirements: string;
   skills: string;
   type: OfferType;
-  duration: string;
+  minDuration: number;
+  maxDuration: number;
   startDate: string;
   stipend: string;
   location: string;
@@ -90,7 +92,8 @@ const emptyForm: OfferFormData = {
   requirements: '',
   skills: '',
   type: 'INTERNSHIP',
-  duration: '',
+  minDuration: 3,
+  maxDuration: 6,
   startDate: '',
   stipend: '',
   location: '',
@@ -104,6 +107,8 @@ const emptyForm: OfferFormData = {
 export default function ManageOffers() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
+  const authPlan = useAuthStore((s) => s.plan) || 'STARTER';
+  const setAuthPlan = useAuthStore((s) => s.setPlan);
   const companyId = user?.companyProfile?.id;
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -114,6 +119,10 @@ export default function ManageOffers() {
   const [formData, setFormData] = useState<OfferFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
+
+  // Plan State
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
 
   const fetchOffers = useCallback(async () => {
     try {
@@ -137,12 +146,34 @@ export default function ManageOffers() {
     }
   }, []);
 
+  const fetchPlan = useCallback(async () => {
+    try {
+      const res = await fetch('/api/subscriptions', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.data) setAuthPlan(data.data.plan);
+    } catch (err) {
+      console.error('Failed to fetch plan:', err);
+    }
+  }, [token, setAuthPlan]);
+
   useEffect(() => {
     fetchOffers();
     fetchCategories();
-  }, [fetchOffers, fetchCategories]);
+    fetchPlan();
+  }, [fetchOffers, fetchCategories, fetchPlan]);
+
+  const PLAN_LIMITS: Record<string, number> = { STARTER: 2, SCHOLAR: 10, PRO: Infinity };
 
   const openCreateDialog = () => {
+    const limit = PLAN_LIMITS[authPlan] ?? 2;
+    if (offers.length >= limit) {
+      setUpgradeReason(`You have reached your limit of ${limit} offers on the ${authPlan} plan.`);
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     setEditingOffer(null);
     setFormData(emptyForm);
     setDialogOpen(true);
@@ -150,20 +181,32 @@ export default function ManageOffers() {
 
   const openEditDialog = (offer: Offer) => {
     setEditingOffer(offer);
+
+    let parsedStartDate = offer.startDate || '';
+    if (parsedStartDate && !isNaN(new Date(parsedStartDate).getTime())) {
+      parsedStartDate = format(new Date(parsedStartDate), 'yyyy-MM-dd');
+    }
+
+    let parsedDeadline = '';
+    if (offer.deadline && !isNaN(new Date(offer.deadline).getTime())) {
+      parsedDeadline = format(new Date(offer.deadline), 'yyyy-MM-dd');
+    }
+
     setFormData({
       title: offer.title,
       description: offer.description,
       requirements: offer.requirements || '',
       skills: offer.skills || '',
       type: offer.type,
-      duration: offer.duration || '',
-      startDate: offer.startDate ? format(new Date(offer.startDate), 'yyyy-MM-dd') : '',
+      minDuration: offer.minDuration || 3,
+      maxDuration: offer.maxDuration || 6,
+      startDate: parsedStartDate,
       stipend: offer.stipend || '',
       location: offer.location || '',
       city: offer.city || '',
       remoteType: offer.remoteType,
       slots: offer.slots,
-      deadline: offer.deadline ? format(new Date(offer.deadline), 'yyyy-MM-dd') : '',
+      deadline: parsedDeadline,
       categoryId: offer.categoryId || '',
     });
     setDialogOpen(true);
@@ -468,12 +511,26 @@ export default function ManageOffers() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration</Label>
+                <Label htmlFor="minDuration">Min Duration (Months) *</Label>
                 <Input
-                  id="duration"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="e.g. 3 months, 6 months"
+                  id="minDuration"
+                  type="number"
+                  min={3}
+                  value={formData.minDuration}
+                  onChange={(e) => setFormData({ ...formData, minDuration: Math.max(3, parseInt(e.target.value) || 3) })}
+                  placeholder="Minimum 3 months"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxDuration">Max Duration (Months) *</Label>
+                <Input
+                  id="maxDuration"
+                  type="number"
+                  min={3}
+                  value={formData.maxDuration}
+                  onChange={(e) => setFormData({ ...formData, maxDuration: Math.max(3, parseInt(e.target.value) || 3) })}
+                  placeholder="e.g. 6, 12 months"
                 />
               </div>
 
@@ -481,7 +538,8 @@ export default function ManageOffers() {
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
                   id="startDate"
-                  type="date"
+                  type="text"
+                  placeholder="e.g. 2024-09-01 or Flexible"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                 />
@@ -591,6 +649,18 @@ export default function ManageOffers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PlanUpgradeModal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        currentPlan={authPlan}
+        reason={upgradeReason}
+        onSuccess={(plan) => {
+          setAuthPlan(plan);
+          setUpgradeModalOpen(false);
+          toast.success(`Plan upgraded to ${plan}! You can now create more offers.`);
+        }}
+      />
     </motion.div>
   );
 }

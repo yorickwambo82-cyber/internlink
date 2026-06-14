@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useNavStore, useAuthStore, useThemeStore } from '@/store';
+import { useNavStore, useAuthStore, useThemeStore, useLangStore } from '@/store';
+import { dictionaries } from '@/lib/dictionaries';
 import { AppShell } from '@/components/internlink/AppShell';
 import LoginPage from '@/components/auth/LoginPage';
 import RegisterPage from '@/components/auth/RegisterPage';
@@ -11,6 +12,7 @@ import HowItWorksSection from '@/components/landing/HowItWorksSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import CTASection from '@/components/landing/CTASection';
 import Footer from '@/components/landing/Footer';
+import { ScrollVelocityContainer, ScrollVelocityRow } from '@/components/ui/scroll-based-velocity';
 import StudentDashboard from '@/components/student/StudentDashboard';
 import BrowseOffers from '@/components/student/BrowseOffers';
 import OfferDetail from '@/components/student/OfferDetail';
@@ -32,60 +34,57 @@ import ManageCategories from '@/components/admin/ManageCategories';
 import AuditLogs from '@/components/admin/AuditLogs';
 import EditGuide from '@/components/admin/EditGuide';
 
-// Landing page header with nav
+// Landing page header with nav — dark transparent design
 function LandingHeader() {
   const navigate = useNavStore((s) => s.navigate);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { theme, toggleTheme } = useThemeStore();
+  const { language, toggleLanguage } = useLangStore();
+  const dict = dictionaries[language].nav;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b glass">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-white/5" style={{ background: 'rgba(5, 13, 10, 0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        {/* Logo */}
         <button
           onClick={() => navigate('landing')}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2.5 group"
         >
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-            <svg className="w-5 h-5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/50 group-hover:shadow-emerald-500/30 transition-shadow">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
             </svg>
           </div>
-          <span className="text-xl font-bold gradient-text">InternLink</span>
+          <span className="text-xl font-black text-white group-hover:text-emerald-400 transition-colors">InternLink</span>
         </button>
 
-        <nav className="hidden md:flex items-center gap-6">
-          <button onClick={() => {
-            const el = document.getElementById('features');
-            el?.scrollIntoView({ behavior: 'smooth' });
-          }} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Features
+        {/* Nav */}
+        <nav className="hidden md:flex items-center gap-8">
+          <button
+            onClick={() => { const el = document.getElementById('features'); el?.scrollIntoView({ behavior: 'smooth' }); }}
+            className="text-sm font-medium text-white/40 hover:text-white transition-colors duration-200"
+          >
+            {dict.features}
           </button>
-          <button onClick={() => navigate('student-guide')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Guide
+          <button onClick={() => navigate('student-guide')} className="text-sm font-medium text-white/40 hover:text-white transition-colors duration-200">
+            {dict.guide}
           </button>
-          <button onClick={() => navigate('student-offers')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Offers
+          <button onClick={() => navigate('student-offers')} className="text-sm font-medium text-white/40 hover:text-white transition-colors duration-200">
+            {dict.offers}
           </button>
         </nav>
 
+        {/* Right actions */}
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            onClick={toggleLanguage}
+            className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold text-white/40 hover:text-white hover:border-white/20 transition-all duration-200"
           >
-            {theme === 'light' ? (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            )}
+            {language.toUpperCase()}
           </button>
+
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
               <button
@@ -95,30 +94,30 @@ function LandingHeader() {
                   else if (user?.role === 'ADMIN') navigate('admin-dashboard');
                   else navigate('supervisor-dashboard');
                 }}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-bold text-[#050d0a] bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 transition-all duration-200"
               >
-                Dashboard
+                {dict.dashboard}
               </button>
               <button
                 onClick={() => { logout(); navigate('landing'); }}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="px-3 py-2 rounded-xl text-sm font-medium text-white/40 hover:text-white border border-white/10 hover:border-white/20 transition-all duration-200"
               >
-                Logout
+                {dict.logout}
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('login')}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-white/40 hover:text-white border border-white/10 hover:border-white/20 transition-all duration-200"
               >
-                Login
+                {dict.login}
               </button>
               <button
                 onClick={() => navigate('register')}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-bold text-[#050d0a] bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 transition-all duration-200"
               >
-                Get Started
+                {dict.getStarted}
               </button>
             </div>
           )}
@@ -140,10 +139,24 @@ function PageContent() {
   // Landing page (custom header/footer)
   if (currentPage === 'landing') {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[#050d0a]">
         <LandingHeader />
         <main className="flex-1">
           <HeroSection />
+          
+          <div className="relative flex w-full flex-col items-center justify-center overflow-hidden py-10 bg-[#050d0a]">
+            <ScrollVelocityContainer className="text-4xl font-black tracking-[-0.02em] md:text-7xl md:leading-[6rem] text-emerald-400/10">
+              <ScrollVelocityRow baseVelocity={2} direction={1}>
+                FIND YOUR INTERNSHIP • 
+              </ScrollVelocityRow>
+              <ScrollVelocityRow baseVelocity={2} direction={-1}>
+                FIND YOUR INTERNSHIP • 
+              </ScrollVelocityRow>
+            </ScrollVelocityContainer>
+            <div className="from-[#050d0a] pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r"></div>
+            <div className="from-[#050d0a] pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l"></div>
+          </div>
+
           <div id="features">
             <FeaturesSection />
           </div>

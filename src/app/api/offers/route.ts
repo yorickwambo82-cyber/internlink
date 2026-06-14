@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { title, description, requirements, skills, type, duration, startDate, stipend,
+    const { title, description, requirements, skills, type, minDuration, maxDuration, startDate, stipend,
       location, city, remoteType, slots, deadline, categoryId } = body
 
     if (!title || !description) {
@@ -157,13 +157,14 @@ export async function POST(request: Request) {
         requirements: requirements || null,
         skills: skills ? (typeof skills === 'string' ? skills : JSON.stringify(skills)) : null,
         type: type || 'INTERNSHIP',
-        duration: duration || null,
+        minDuration: minDuration ? Math.max(3, parseInt(minDuration)) : 3,
+        maxDuration: maxDuration ? Math.max(3, parseInt(maxDuration)) : 6,
         startDate: startDate || null,
         stipend: stipend || null,
         location: location || null,
         city: city || null,
         remoteType: remoteType || 'ON_SITE',
-        slots: slots || 1,
+        slots: slots ? parseInt(slots) : 1,
         deadline: deadline ? new Date(deadline) : null,
       },
       include: {

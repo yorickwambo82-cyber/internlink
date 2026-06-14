@@ -7,7 +7,7 @@ Built all 6 landing page components for the InternLink Cameroon internship platf
 
 ### 1. `/src/components/landing/HeroSection.tsx`
 - Gradient heading "Bridge the Gap Between Education and Employment"
-- Badge with "InternLink Cameroon — Empowering Youth"
+- Badge with "InternLink Cameroon Empowering Youth"
 - Two CTA buttons: "Find Internships" (primary) and "Post Opportunities" (outline)
 - Animated floating geometric shapes (circles, diamonds, triangles, dot grid, hexagonal shapes)
 - African diamond pattern SVG as decorative element
@@ -52,7 +52,7 @@ Built all 6 landing page components for the InternLink Cameroon internship platf
 - Quick Links: About, For Students, For Companies, Contact
 - Legal: Privacy Policy, Terms of Service, Cookie Policy
 - Social media icons with hover effects
-- "Made with ❤️ in Cameroon 🇨🇲"
+
 - Dynamic copyright year
 
 ## Files Modified

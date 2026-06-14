@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { useAuthStore, useNavStore } from '@/store';
 import type { Application, UserRole } from '@/types';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, addMonths, differenceInDays } from 'date-fns';
+import { Progress } from '@/components/ui/progress';
 
 interface ApplicationCardProps {
   application: Application;
@@ -79,6 +80,39 @@ export default function ApplicationCard({
               <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
                 {coverExcerpt}
               </p>
+            </div>
+          )}
+
+          {/* Timeline Progress */}
+          {(application.status === 'ACCEPTED' || application.status === 'IN_PROGRESS') && 
+           application.expectedStartDate && application.selectedDuration && (
+            <div className="space-y-1.5 pt-2 border-t border-muted/50 mt-2">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-medium text-primary uppercase tracking-wider">Internship Timeline</span>
+                <span className="text-muted-foreground">{application.selectedDuration} Months</span>
+              </div>
+              {(() => {
+                const start = new Date(application.expectedStartDate);
+                const end = addMonths(start, application.selectedDuration);
+                const now = new Date();
+                const totalDays = Math.max(1, differenceInDays(end, start));
+                const daysElapsed = Math.max(0, differenceInDays(now, start));
+                const progress = Math.min(100, (daysElapsed / totalDays) * 100);
+                const daysLeft = Math.max(0, differenceInDays(end, now));
+
+                return (
+                  <>
+                    <Progress value={progress} className="h-1.5 bg-primary/10" />
+                    <div className="flex justify-between text-[9px] text-muted-foreground">
+                      <span>{format(start, 'MMM d')}</span>
+                      <span className="font-medium text-primary">
+                        {daysLeft > 0 ? `${daysLeft}d left` : 'Finished'}
+                      </span>
+                      <span>{format(end, 'MMM d, yyyy')}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </CardContent>

@@ -33,6 +33,7 @@ export async function GET(request: Request) {
       inProgressApplications,
       cancelledApplications,
       recentSignups,
+      activeSubscriptions,
     ] = await Promise.all([
       db.user.count({ where: { role: 'STUDENT' } }),
       db.user.count({ where: { role: 'COMPANY' } }),
@@ -53,11 +54,24 @@ export async function GET(request: Request) {
           },
         },
       }),
+      db.subscription.findMany({
+        where: { status: 'ACTIVE' },
+        select: { plan: true },
+      })
     ])
+
+    let totalRevenue = 0
+    activeSubscriptions.forEach(sub => {
+      if (sub.plan === 'SCHOLAR') totalRevenue += 5000
+      if (sub.plan === 'PRO') totalRevenue += 15000
+    })
 
     return NextResponse.json({
       success: true,
       data: {
+        revenue: {
+          total: totalRevenue,
+        },
         users: {
           totalStudents,
           totalCompanies,

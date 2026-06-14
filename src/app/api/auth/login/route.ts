@@ -2,17 +2,26 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPassword, generateToken } from '@/lib/auth'
 
+import { z } from 'zod'
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+})
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { email, password } = body
-
-    if (!email || !password) {
+    
+    // Zod Validation
+    const parseResult = loginSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
-        { success: false, error: 'Email and password are required' },
+        { success: false, error: parseResult.error.errors[0].message },
         { status: 400 }
       )
     }
+    const { email, password } = parseResult.data
 
     // Find user with profiles
     const user = await db.user.findUnique({

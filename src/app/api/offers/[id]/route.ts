@@ -104,7 +104,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { title, description, requirements, skills, type, duration, startDate, stipend,
+    const { title, description, requirements, skills, type, minDuration, maxDuration, startDate, stipend,
       location, city, remoteType, slots, deadline, categoryId, status } = body
 
     const updateData: Record<string, unknown> = {}
@@ -113,7 +113,8 @@ export async function PUT(
     if (requirements !== undefined) updateData.requirements = requirements
     if (skills !== undefined) updateData.skills = typeof skills === 'string' ? skills : JSON.stringify(skills)
     if (type !== undefined) updateData.type = type
-    if (duration !== undefined) updateData.duration = duration
+    if (minDuration !== undefined) updateData.minDuration = Math.max(3, parseInt(minDuration))
+    if (maxDuration !== undefined) updateData.maxDuration = Math.max(3, parseInt(maxDuration))
     if (startDate !== undefined) updateData.startDate = startDate
     if (stipend !== undefined) updateData.stipend = stipend
     if (location !== undefined) updateData.location = location
