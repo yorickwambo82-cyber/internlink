@@ -18,11 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-const testAccounts = [
-  { label: 'Student', email: 'student@test.com', password: 'student123', icon: GraduationCap },
-  { label: 'Company', email: 'company@test.com', password: 'company123', icon: Building2 },
-  { label: 'Admin', email: 'admin@internlink.cm', password: 'admin123', icon: ShieldCheck },
-];
+
 
 const roleDashboards: Record<UserRole, PageView> = {
   STUDENT: 'student-dashboard',
@@ -86,10 +82,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleTestLogin = (testEmail: string, testPassword: string) => {
-    setEmail(testEmail);
-    setPassword(testPassword);
-  };
+
 
   const handleForgotRequest = async () => {
     if (!fpEmail.trim()) { toast.error('Please enter your email'); return; }
@@ -329,30 +322,7 @@ export default function LoginPage() {
             </button>
           </p>
 
-          {/* Test accounts */}
-          <Card className="border-dashed">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground font-medium mb-3">
-                🧪 Quick test accounts
-              </p>
-              <div className="space-y-2">
-                {testAccounts.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => handleTestLogin(account.email, account.password)}
-                    className="flex items-center gap-2.5 w-full text-left p-2 rounded-md hover:bg-muted/80 transition-colors text-sm group"
-                  >
-                    <account.icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <span className="font-medium text-xs">{account.label}:</span>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {account.email} / {account.password}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </motion.div>
 
