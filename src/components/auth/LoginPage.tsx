@@ -162,9 +162,7 @@ export default function LoginPage() {
           >
             {/* Logo */}
             <div className="flex items-center justify-center gap-3 mb-8">
-              <div className="h-14 w-14 rounded-2xl bg-primary-foreground/20 flex items-center justify-center">
-                <GraduationCap className="h-8 w-8" />
-              </div>
+              <img src="/logo.png" alt="InternLink Logo" className="h-14 w-14 object-contain rounded-2xl bg-white shadow-md p-1" />
               <div className="text-left">
                 <h1 className="text-3xl font-bold tracking-tight">InternLink</h1>
                 <p className="text-primary-foreground/70 text-sm">Cameroon</p>
@@ -213,9 +211,7 @@ export default function LoginPage() {
           </button>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img src="/logo.png" alt="InternLink Logo" className="h-10 w-10 object-contain rounded-xl bg-white shadow-sm p-1" />
             <h1 className="text-2xl font-bold">InternLink</h1>
           </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
@@ -58,6 +58,17 @@ export default function RegisterPage() {
   const [direction, setDirection] = useState(1);
   const [role, setRole] = useState<UserRole | ''>('');
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  // Fetch categories for field of study dropdown
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setCategories(data.data);
+      })
+      .catch(err => console.error('Failed to fetch categories:', err));
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
 
   // Common fields
@@ -193,9 +204,7 @@ export default function RegisterPage() {
             </button>
           </div>
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img src="/logo.png" alt="InternLink Logo" className="h-10 w-10 object-contain rounded-xl bg-white shadow-sm p-1" />
             <h1 className="text-2xl font-bold">InternLink</h1>
           </div>
           <h2 className="text-xl font-bold">Create your account</h2>
@@ -331,7 +340,7 @@ export default function RegisterPage() {
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                           <Input
                             id="name"
-                            placeholder="John Doe"
+                            placeholder="...."
                             className="pl-9 h-9 text-sm"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -417,7 +426,7 @@ export default function RegisterPage() {
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="+237 655022702"
+                          placeholder="+237 6xx xxx xxx"
                           className="pl-9 h-9 text-sm"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
@@ -460,15 +469,21 @@ export default function RegisterPage() {
                               Field of Study *
                             </Label>
                             <div className="relative">
-                              <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                              <Input
+                              <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                              <select
                                 id="field-of-study"
-                                placeholder="Computer Science"
-                                className="pl-9 h-9 text-sm"
+                                className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none cursor-pointer"
                                 value={fieldOfStudy}
                                 onChange={(e) => setFieldOfStudy(e.target.value)}
                                 required
-                              />
+                              >
+                                <option value="">Select your field...</option>
+                                {categories.map((cat) => (
+                                  <option key={cat.id} value={cat.name}>
+                                    {cat.name}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                           </div>
                         </div>

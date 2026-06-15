@@ -62,6 +62,7 @@ export default function StudentProfile() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState<ProfileForm>({
     name: '',
     email: '',
@@ -104,6 +105,14 @@ export default function StudentProfile() {
       }
     }
     fetchProfile();
+
+    // Fetch categories for field of study dropdown
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setCategories(data.data);
+      })
+      .catch(err => console.error('Failed to fetch categories:', err));
   }, [token]);
 
   const updateField = (key: keyof ProfileForm, value: string) => {
@@ -300,12 +309,19 @@ export default function StudentProfile() {
                   <BookOpen className="h-3.5 w-3.5" />
                   Field of Study
                 </Label>
-                <Input
+                <select
                   id="fieldOfStudy"
-                  placeholder="Computer Science"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none cursor-pointer"
                   value={form.fieldOfStudy}
                   onChange={(e) => updateField('fieldOfStudy', e.target.value)}
-                />
+                >
+                  <option value="">Select your field...</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

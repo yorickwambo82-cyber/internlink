@@ -143,8 +143,8 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-          <GraduationCap className="w-6 h-6 text-primary-foreground" />
+        <div className="w-10 h-10 rounded-xl bg-white shadow-sm p-1 flex items-center justify-center">
+          <img src="/logo.png" alt="InternLink Logo" className="w-full h-full object-contain" />
         </div>
         <div>
           <h2 className="font-bold text-lg leading-tight">InternLink</h2>

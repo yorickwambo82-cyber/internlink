@@ -50,7 +50,6 @@ import {
 import { useAuthStore } from '@/store';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
-import PlanUpgradeModal from '@/components/shared/PlanUpgradeModal';
 import type { Offer, Category, OfferType, RemoteType } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -107,8 +106,7 @@ const emptyForm: OfferFormData = {
 export default function ManageOffers() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
-  const authPlan = useAuthStore((s) => s.plan) || 'STARTER';
-  const setAuthPlan = useAuthStore((s) => s.setPlan);
+
   const companyId = user?.companyProfile?.id;
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -120,9 +118,7 @@ export default function ManageOffers() {
   const [submitting, setSubmitting] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
 
-  // Plan State
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState('');
+
 
   const fetchOffers = useCallback(async () => {
     try {
@@ -146,34 +142,12 @@ export default function ManageOffers() {
     }
   }, []);
 
-  const fetchPlan = useCallback(async () => {
-    try {
-      const res = await fetch('/api/subscriptions', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success && data.data) setAuthPlan(data.data.plan);
-    } catch (err) {
-      console.error('Failed to fetch plan:', err);
-    }
-  }, [token, setAuthPlan]);
-
   useEffect(() => {
     fetchOffers();
     fetchCategories();
-    fetchPlan();
-  }, [fetchOffers, fetchCategories, fetchPlan]);
-
-  const PLAN_LIMITS: Record<string, number> = { STARTER: 2, SCHOLAR: 10, PRO: Infinity };
+  }, [fetchOffers, fetchCategories]);
 
   const openCreateDialog = () => {
-    const limit = PLAN_LIMITS[authPlan] ?? 2;
-    if (offers.length >= limit) {
-      setUpgradeReason(`You have reached your limit of ${limit} offers on the ${authPlan} plan.`);
-      setUpgradeModalOpen(true);
-      return;
-    }
-
     setEditingOffer(null);
     setFormData(emptyForm);
     setDialogOpen(true);
@@ -649,18 +623,6 @@ export default function ManageOffers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <PlanUpgradeModal
-        open={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        currentPlan={authPlan}
-        reason={upgradeReason}
-        onSuccess={(plan) => {
-          setAuthPlan(plan);
-          setUpgradeModalOpen(false);
-          toast.success(`Plan upgraded to ${plan}! You can now create more offers.`);
-        }}
-      />
     </motion.div>
   );
 }

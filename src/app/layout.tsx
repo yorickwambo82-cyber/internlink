@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "InternLink Cameroon" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.png",
   },
   openGraph: {
     title: "InternLink Cameroon - Internship & Apprenticeship Portal",

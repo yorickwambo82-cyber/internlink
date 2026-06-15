@@ -11,6 +11,9 @@ const registerSchema = z.object({
   phone: z.string().optional(),
   role: z.enum(['STUDENT', 'COMPANY'], { required_error: 'Role must be STUDENT or COMPANY' }),
   companyName: z.string().optional(),
+  university: z.string().optional(),
+  fieldOfStudy: z.string().optional(),
+  year: z.string().optional(),
 }).refine(data => {
   if (data.role === 'COMPANY' && (!data.companyName || data.companyName.trim() === '')) {
     return false;
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    const { email, password, name, phone, role, companyName } = parseResult.data
+    const { email, password, name, phone, role, companyName, university, fieldOfStudy, year } = parseResult.data
 
     // Check email uniqueness
     const existingUser = await db.user.findUnique({ where: { email } })
@@ -55,7 +58,13 @@ export async function POST(request: Request) {
         name,
         phone: phone || null,
         role,
-        studentProfile: role === 'STUDENT' ? { create: {} } : undefined,
+        studentProfile: role === 'STUDENT' ? { 
+          create: {
+            university: university || null,
+            fieldOfStudy: fieldOfStudy || null,
+            year: year || null,
+          } 
+        } : undefined,
         companyProfile: role === 'COMPANY'
           ? { create: { companyName } }
           : undefined,

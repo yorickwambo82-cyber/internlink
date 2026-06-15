@@ -181,6 +181,37 @@ export async function POST(request: Request) {
       },
     })
 
+    // ── NOTIFY STUDENTS IN MATCHING FIELD ──────────────────────
+    // Fire-and-forget: don't block the response
+    if (offer.category?.name) {
+      const categoryName = offer.category.name
+      db.studentProfile.findMany({
+        where: {
+          fieldOfStudy: {
+            equals: categoryName,
+            mode: 'insensitive',
+          },
+        },
+        select: { userId: true },
+      }).then(async (matchingStudents) => {
+        if (matchingStudents.length > 0) {
+          const companyName = offer.company?.companyName || 'A company'
+          const notifications = matchingStudents.map((student) => ({
+            userId: student.userId,
+            title: '🎯 New Opportunity in Your Field!',
+            message: `${companyName} just posted "${offer.title}" in ${categoryName}. Check it out!`,
+            type: 'INFO',
+            link: `/offers/${offer.id}`,
+          }))
+          await db.notification.createMany({ data: notifications })
+          console.log(`Notified ${matchingStudents.length} students in "${categoryName}" about new offer "${offer.title}"`)
+        }
+      }).catch((err) => {
+        console.error('Failed to send field notifications:', err)
+      })
+    }
+    // ───────────────────────────────────────────────────────────
+
     return NextResponse.json({
       success: true,
       data: offer,

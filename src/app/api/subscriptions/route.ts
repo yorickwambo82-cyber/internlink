@@ -3,9 +3,9 @@ import { db } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
 export const PLAN_LIMITS = {
-  STARTER: { applications: 3, offers: 2 },
-  SCHOLAR: { applications: 15, offers: 10 },
-  PRO: { applications: Infinity, offers: Infinity },
+  STARTER: { applications: 3 },
+  SCHOLAR: { applications: 15 },
+  PRO: { applications: Infinity },
 };
 
 export const PLAN_PRICES = {
