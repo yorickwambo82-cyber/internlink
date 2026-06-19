@@ -14,8 +14,7 @@ import { useAuthStore } from '@/store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// ─── Check if Monetbil is live ───────────────────────────────
-const MONETBIL_APPROVED = process.env.NEXT_PUBLIC_MONETBIL_APPROVED === 'true';
+// ─── Payment Integration ───────────────────────────────
 
 const PLANS = [
   {
@@ -27,7 +26,7 @@ const PLANS = [
     disabled: ['Analytics', 'Priority listing', 'Email support'],
   },
   {
-    key: 'SCHOLAR', name: 'Scholar', price: 2500, icon: Zap,
+    key: 'SCHOLAR', name: 'Scholar', price: 100, icon: Zap,
     color: 'border-blue-300 dark:border-blue-600',
     headerColor: 'bg-blue-50 dark:bg-blue-950',
     iconColor: 'text-blue-600', badge: 'Popular',
@@ -35,7 +34,7 @@ const PLANS = [
     disabled: ['Priority listing', 'Full analytics'],
   },
   {
-    key: 'PRO', name: 'Pro', price: 7500, icon: Crown,
+    key: 'PRO', name: 'Pro', price: 200, icon: Crown,
     color: 'border-amber-300 dark:border-amber-600',
     headerColor: 'bg-amber-50 dark:bg-amber-950',
     iconColor: 'text-amber-600', badge: 'Best Value',
@@ -293,33 +292,27 @@ export default function PlanUpgradeModal({
     if (!operator) { toast.error('Please select a payment method'); return; }
     if (!phone.trim()) { toast.error('Please enter your mobile money number'); return; }
 
-    // If Monetbil is approved → redirect to real checkout
-    if (MONETBIL_APPROVED) {
-      setStep('processing');
-      setProcessing(true);
-      try {
-        const payRes = await fetch('/api/payments/monetbil', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ phone: phone.trim(), amount: selectedPlanData!.price, plan: selectedPlan }),
-        });
-        const payData = await payRes.json();
-        if (!payData.success || !payData.paymentUrl) {
-          toast.error(payData.error || 'Failed to initiate payment');
-          setStep('payment');
-          return;
-        }
-        toast.success('Redirecting to secure payment page...');
-        window.location.href = payData.paymentUrl;
-      } catch {
-        toast.error('Something went wrong. Please try again.');
+    setStep('processing');
+    setProcessing(true);
+    try {
+      const payRes = await fetch('/api/payments/fapshi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phone: phone.trim(), amount: selectedPlanData!.price, plan: selectedPlan }),
+      });
+      const payData = await payRes.json();
+      if (!payData.success || !payData.paymentUrl) {
+        toast.error(payData.error || 'Failed to initiate payment');
         setStep('payment');
-      } finally {
-        setProcessing(false);
+        return;
       }
-    } else {
-      // Monetbil not yet approved → use interactive simulator
-      setStep('ussd');
+      toast.success('Redirecting to secure payment page...');
+      window.location.href = payData.paymentUrl;
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+      setStep('payment');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -376,12 +369,7 @@ export default function PlanUpgradeModal({
           {reason && step === 'plans' && (
             <p className="text-sm text-muted-foreground mt-1">{reason}</p>
           )}
-          {!MONETBIL_APPROVED && step === 'payment' && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-              <Shield className="w-3.5 h-3.5 shrink-0" />
-              <span>Secure demo mode — full Monetbil integration activates upon service approval (1-2 days)</span>
-            </div>
-          )}
+
         </DialogHeader>
 
         <div className="p-6">

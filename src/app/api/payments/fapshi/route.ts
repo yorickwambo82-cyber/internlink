@@ -29,56 +29,60 @@ export async function POST(request: Request) {
     const { amount, plan, phone } = parsed.data;
     const userId = payload.userId;
 
-    const serviceKey = process.env.MONETBIL_SERVICE_KEY;
-    if (!serviceKey) {
-      console.error('MONETBIL_SERVICE_KEY is missing from environment');
+    const apiUser = process.env.FAPSHI_API_USER;
+    const apiKey = process.env.FAPSHI_API_KEY;
+
+    if (!apiUser || !apiKey) {
+      console.error('FAPSHI_API_USER or FAPSHI_API_KEY is missing from environment');
       return NextResponse.json({ success: false, error: 'Payment service configuration error' }, { status: 500 });
     }
 
-    // Generate a payment reference containing metadata: MB-[userId]-[plan]-[timestamp]
-    const paymentRef = `MB-${userId}-${plan}-${Date.now()}`;
+    // externalId containing metadata for webhook processing: FA-[userId]-[plan]-[timestamp]
+    const externalId = `FA-${userId}-${plan}-${Date.now()}`;
 
-    // Get request host for redirect and notify URLs
+    // Get request host for redirect URL
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
     const origin = `${protocol}://${host}`;
+    const redirectUrl = `${origin}/payment-status`;
 
-    // Construct return and webhook notification URLs
-    const returnUrl = `${origin}/payment-status`;
-    const notifyUrl = `${origin}/api/payments/monetbil-webhook`;
+    // As requested, placeholder email since we only really have phone from the user
+    const email = `user${userId}@internlink.com`;
 
-    // Call Monetbil Widget API v2.1
-    const monetbilRes = await fetch(`https://api.monetbil.com/widget/v2.1/${serviceKey}`, {
+    // Call Fapshi Live API
+    const fapshiRes = await fetch('https://live.fapshi.com/initiate-pay', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'apiuser': apiUser,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         amount,
-        currency: 'XAF',
-        locale: 'en',
-        phone: phone || undefined,
-        phone_lock: phone ? true : false,
-        payment_ref: paymentRef,
-        return_url: returnUrl,
-        notify_url: notifyUrl,
+        email,
+        userId,
+        redirectUrl,
+        externalId,
+        message: `Payment for ${plan} plan on Internlink`
       }),
     });
 
-    if (!monetbilRes.ok) {
-      const errorText = await monetbilRes.text();
-      console.error('Monetbil API error response:', errorText);
-      return NextResponse.json({ success: false, error: 'Failed to communicate with Monetbil' }, { status: 502 });
+    if (!fapshiRes.ok) {
+      const errorText = await fapshiRes.text();
+      console.error('Fapshi API error response:', errorText);
+      return NextResponse.json({ success: false, error: 'Failed to communicate with Fapshi' }, { status: 502 });
     }
 
-    const monetbilData = await monetbilRes.json();
-    if (!monetbilData.success || !monetbilData.payment_url) {
-      return NextResponse.json({ success: false, error: monetbilData.message || 'Payment initiation failed' }, { status: 400 });
+    const fapshiData = await fapshiRes.json();
+    
+    // According to standard Fapshi response, link to redirect is provided
+    if (!fapshiData.link) {
+      return NextResponse.json({ success: false, error: fapshiData.message || 'Payment initiation failed' }, { status: 400 });
     }
 
     return NextResponse.json({
       success: true,
-      paymentUrl: monetbilData.payment_url,
+      paymentUrl: fapshiData.link,
     });
   } catch (error) {
     console.error('Payment initiation error:', error);

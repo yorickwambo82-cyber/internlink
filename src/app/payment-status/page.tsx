@@ -19,8 +19,8 @@ function PaymentStatusContent() {
   const [targetPlan, setTargetPlan] = useState<string>('Premium');
 
   useEffect(() => {
-    // Monetbil returns key transaction information in the query string
-    const ref = searchParams.get('payment_ref') || searchParams.get('transaction_id');
+    // Fapshi returns key transaction information in the query string
+    const ref = searchParams.get('externalId') || searchParams.get('payment_ref') || searchParams.get('transaction_id');
     setPaymentRef(ref);
 
     if (ref) {
@@ -99,17 +99,16 @@ function PaymentStatusContent() {
 
     try {
       setStatus('checking');
-      const res = await fetch('/api/payments/monetbil-webhook', {
+      const res = await fetch('/api/payments/fapshi-webhook', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: 'success',
-          payment_ref: paymentRef,
-          transaction_id: `MOCK-TX-${Date.now()}`,
-          operator: 'MTN',
-          amount: targetPlan === 'Pro' ? 7500 : 2500,
+          status: 'SUCCESSFUL',
+          externalId: paymentRef,
+          transId: `MOCK-TX-${Date.now()}`,
+          amount: targetPlan === 'Pro' ? 200 : 100,
         }),
       });
 
@@ -200,7 +199,7 @@ function PaymentStatusContent() {
           {status === 'manual_required' && (
             <div className="space-y-4 w-full">
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-200">
-                <strong>Why is this happening?</strong> Monetbil sandbox callbacks cannot reach your local <code>localhost:3000</code> server directly without an internet-accessible tunnel (like <em>ngrok</em>).
+                <strong>Why is this happening?</strong> Webhook callbacks cannot reach your local <code>localhost:3000</code> server directly without an internet-accessible tunnel (like <em>ngrok</em>).
               </div>
               <Button onClick={handleManualActivate} className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#050d0a] font-bold">
                 Force Activate Subscription (Dev Mode)
