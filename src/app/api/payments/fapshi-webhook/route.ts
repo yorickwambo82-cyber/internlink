@@ -6,8 +6,8 @@ export async function POST(request: Request) {
     const providedSecret = request.headers.get('x-wh-secret');
     const expectedSecret = process.env.FAPSHI_WEBHOOK_SECRET;
 
-    // Verify webhook secret if it is configured in the environment
-    if (expectedSecret && providedSecret !== expectedSecret) {
+    // Verify webhook secret if it is configured in the environment (bypassed in development mode)
+    if (process.env.NODE_ENV !== 'development' && expectedSecret && providedSecret !== expectedSecret) {
       console.error('Invalid Fapshi webhook secret');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
