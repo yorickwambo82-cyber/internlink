@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { verifyToken } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ['application/pdf'];
@@ -37,18 +36,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'File size must be under 5 MB' }, { status: 400 });
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase keys in environment');
+      return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     // Safe filename: userId_timestamp_originalname
     const safeName = `${payload.userId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'applications');
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(join(uploadDir, safeName), buffer);
 
-    const url = `/uploads/applications/${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from('applications')
+      .upload(safeName, buffer, {
+        contentType: file.type,
+        upsert: false
+      });
 
-    return NextResponse.json({ success: true, url });
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return NextResponse.json({ success: false, error: 'Failed to save file to storage' }, { status: 500 });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('applications')
+      .getPublicUrl(safeName);
+
+    return NextResponse.json({ success: true, url: publicUrlData.publicUrl });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ success: false, error: 'Upload failed' }, { status: 500 });
