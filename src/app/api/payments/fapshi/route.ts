@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = verifyToken(token);
+  const payload = verifyToken(token) as { userId: string } | null;
   if (!payload) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
     const { amount, plan, phone } = parsed.data;

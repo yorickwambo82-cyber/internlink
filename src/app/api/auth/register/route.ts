@@ -9,7 +9,7 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(2, 'Name is required'),
   phone: z.string().optional(),
-  role: z.enum(['STUDENT', 'COMPANY'], { required_error: 'Role must be STUDENT or COMPANY' }),
+  role: z.enum(['STUDENT', 'COMPANY']),
   companyName: z.string().optional(),
   university: z.string().optional(),
   fieldOfStudy: z.string().optional(),
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const parseResult = registerSchema.safeParse(body)
     if (!parseResult.success) {
       return NextResponse.json(
-        { success: false, error: parseResult.error.errors[0].message },
+        { success: false, error: parseResult.error.issues[0].message },
         { status: 400 }
       )
     }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
           } 
         } : undefined,
         companyProfile: role === 'COMPANY'
-          ? { create: { companyName } }
+          ? { create: { companyName: companyName || '' } }
           : undefined,
       },
       include: {

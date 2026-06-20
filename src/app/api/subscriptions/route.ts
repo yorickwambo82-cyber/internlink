@@ -16,7 +16,7 @@ export const PLAN_PRICES = {
 function getAuth(request: Request) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '');
   if (!token) return null;
-  return verifyToken(token);
+  return verifyToken(token) as { userId: string } | null;
 }
 
 // GET /api/subscriptions — get current user's plan

@@ -93,6 +93,7 @@ export default function OfferDetail() {
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [applyStep, setApplyStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [coverLetter, setCoverLetter] = useState('');
   const [expectedStartDate, setExpectedStartDate] = useState('');
   const [selectedDuration, setSelectedDuration] = useState<number>(3);
@@ -178,15 +179,25 @@ export default function OfferDetail() {
     }
 
     setSubmitting(true);
+    setUploadProgress(0);
     try {
-      // 1. Upload files
-      const cvUrl = await handleFileUpload(cvFile);
-      const schoolAttestationUrl = await handleFileUpload(attestationFile);
-      const motivationLetterUrl = await handleFileUpload(motivationFile);
-      const transcriptUrl = await handleFileUpload(transcriptFile);
+      // 1. Upload all files in parallel for speed
+      const uploadFile = async (file: File) => {
+        const url = await handleFileUpload(file);
+        setUploadProgress((prev) => prev + 1);
+        return url;
+      };
+
+      const [cvUrl, schoolAttestationUrl, motivationLetterUrl, transcriptUrl] = await Promise.all([
+        uploadFile(cvFile),
+        uploadFile(attestationFile),
+        uploadFile(motivationFile),
+        uploadFile(transcriptFile),
+      ]);
 
       if (!cvUrl || !schoolAttestationUrl || !motivationLetterUrl || !transcriptUrl) {
         setSubmitting(false);
+        setUploadProgress(0);
         return; // Stopped because a file failed
       }
 
@@ -239,6 +250,7 @@ export default function OfferDetail() {
       toast.error('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -459,7 +471,9 @@ export default function OfferDetail() {
                               {submitting ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Submitting...
+                                  {uploadProgress < 4
+                                    ? `Uploading files (${uploadProgress}/4)...`
+                                    : 'Submitting...'}
                                 </>
                               ) : (
                                 'Submit Application'

@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const schema = z.object({
   phone: z.string().min(9, 'Invalid phone number'),
-  operator: z.enum(['ORANGE', 'MTN'], { required_error: 'Select an operator' }),
+  operator: z.enum(['ORANGE', 'MTN']),
   amount: z.number().positive('Invalid amount'),
   plan: z.enum(['SCHOLAR', 'PRO']),
 });
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
     const { phone, operator, amount, plan } = parsed.data;
