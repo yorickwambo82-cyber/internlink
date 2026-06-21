@@ -56,7 +56,7 @@ function PaymentStatusContent() {
             // Redirect after 3 seconds
             setTimeout(() => {
               const returnPath = searchParams.get('return') || '/';
-              router.push(returnPath);
+              router.push(returnPath.startsWith('?') ? '/' + returnPath : returnPath);
             }, 3000);
             return true;
           }
@@ -128,7 +128,7 @@ function PaymentStatusContent() {
           setStatus('success');
           setTimeout(() => {
             const returnPath = searchParams.get('return') || '/';
-            router.push(returnPath);
+            router.push(returnPath.startsWith('?') ? '/' + returnPath : returnPath);
           }, 2000);
         }
       } else {
@@ -222,7 +222,7 @@ function PaymentStatusContent() {
             className="w-full hover:bg-zinc-900 text-zinc-400 hover:text-white"
             onClick={() => {
               const returnPath = searchParams.get('return') || '/';
-              router.push(returnPath);
+              router.push(returnPath.startsWith('?') ? '/' + returnPath : returnPath);
             }}
           >
             Go back <ArrowRight className="w-4 h-4 ml-2" />

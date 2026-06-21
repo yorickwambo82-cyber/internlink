@@ -50,9 +50,13 @@ export async function POST(request: Request) {
         const amount = plan === 'PRO' ? 200 : 100;
         await db.subscription.upsert({
           where: { userId: userId },
-          update: { plan: plan, status: 'ACTIVE', expiresAt, paymentRef: transId, amount },
-          create: { userId: userId, plan: plan, status: 'ACTIVE', expiresAt, paymentRef: transId, amount },
+          update: { plan: plan, status: 'ACTIVE', expiresAt, paymentRef: transId },
+          create: { userId: userId, plan: plan, status: 'ACTIVE', expiresAt, paymentRef: transId },
         });
+
+        // Use raw SQL to update the amount because the Prisma Client generation failed due to a dev server lock.
+        // The DB has the column, but the client doesn't know it yet.
+        await db.$executeRawUnsafe(`UPDATE "Subscription" SET amount = $1 WHERE "userId" = $2`, amount, userId);
         
         await db.auditLog.create({
           data: { action: 'WEBHOOK_SUCCESS', entity: 'Fapshi', details: `Upgraded ${userId} to ${plan} (TransId: ${transId})`, userId: userId }
