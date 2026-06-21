@@ -6,6 +6,7 @@ const schema = z.object({
   amount: z.number().positive('Invalid amount'),
   plan: z.enum(['SCHOLAR', 'PRO']),
   phone: z.string().optional(),
+  returnPath: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { amount, plan, phone } = parsed.data;
+    const { amount, plan, phone, returnPath } = parsed.data;
     const userId = payload.userId;
 
     const apiUser = process.env.FAPSHI_API_USER;
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
     const origin = `${protocol}://${host}`;
-    const redirectUrl = `${origin}/payment-status`;
+    const redirectUrl = `${origin}/payment-status${returnPath ? `?return=${encodeURIComponent(returnPath)}` : ''}`;
 
     // As requested, placeholder email since we only really have phone from the user
     const email = `user${userId}@internlink.com`;

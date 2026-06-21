@@ -644,10 +644,12 @@ export default function OfferDetail() {
         onClose={() => setUpgradeModalOpen(false)}
         currentPlan={authPlan}
         reason={upgradeReason}
+        returnPath={selectedOfferId ? `?view=offer&offerId=${selectedOfferId}` : undefined}
         onSuccess={(plan) => {
           setAuthPlan(plan);
           setUpgradeModalOpen(false);
           toast.success(`Plan upgraded to ${plan}! You can now continue your application.`);
+          setApplyDialogOpen(true);
         }}
       />
     </motion.div>

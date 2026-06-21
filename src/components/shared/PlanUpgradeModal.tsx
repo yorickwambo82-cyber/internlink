@@ -49,6 +49,7 @@ interface PlanUpgradeModalProps {
   onSuccess?: (plan: string) => void;
   currentPlan?: string;
   reason?: string;
+  returnPath?: string;
 }
 
 type Step = 'plans' | 'payment' | 'ussd' | 'pin' | 'processing' | 'success';
@@ -269,7 +270,7 @@ function PhoneSimulator({
 
 // ─── Main Modal ───────────────────────────────────────────────
 export default function PlanUpgradeModal({
-  open, onClose, onSuccess, currentPlan = 'STARTER', reason,
+  open, onClose, onSuccess, currentPlan = 'STARTER', reason, returnPath,
 }: PlanUpgradeModalProps) {
   const { token } = useAuthStore();
   const [step, setStep] = useState<Step>('plans');
@@ -298,7 +299,7 @@ export default function PlanUpgradeModal({
       const payRes = await fetch('/api/payments/fapshi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ phone: phone.trim(), amount: selectedPlanData!.price, plan: selectedPlan }),
+        body: JSON.stringify({ phone: phone.trim(), amount: selectedPlanData!.price, plan: selectedPlan, returnPath }),
       });
       const payData = await payRes.json();
       if (!payData.success || !payData.paymentUrl) {

@@ -53,9 +53,10 @@ function PaymentStatusContent() {
             setStatus('success');
             toast.success('Your subscription has been successfully upgraded!');
             
-            // Redirect to dashboard after 3 seconds
+            // Redirect after 3 seconds
             setTimeout(() => {
-              router.push('/');
+              const returnPath = searchParams.get('return') || '/';
+              router.push(returnPath);
             }, 3000);
             return true;
           }
@@ -125,7 +126,8 @@ function PaymentStatusContent() {
           setPlan(subData.data.plan);
           setStatus('success');
           setTimeout(() => {
-            router.push('/');
+            const returnPath = searchParams.get('return') || '/';
+            router.push(returnPath);
           }, 2000);
         }
       } else {
@@ -210,9 +212,12 @@ function PaymentStatusContent() {
           <Button 
             variant="ghost" 
             className="w-full hover:bg-zinc-900 text-zinc-400 hover:text-white"
-            onClick={() => router.push('/')}
+            onClick={() => {
+              const returnPath = searchParams.get('return') || '/';
+              router.push(returnPath);
+            }}
           >
-            Go back to Home <ArrowRight className="w-4 h-4 ml-2" />
+            Go back <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </CardFooter>
       </Card>

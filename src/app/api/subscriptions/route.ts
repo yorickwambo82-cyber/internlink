@@ -8,9 +8,9 @@ export const PLAN_LIMITS = {
   PRO: { applications: Infinity },
 };
 
-export const PLAN_PRICES = {
-  SCHOLAR: 2500,
-  PRO: 7500,
+export const PLAN_PRICES: Record<string, number> = {
+  SCHOLAR: 100,
+  PRO: 200,
 };
 
 function getAuth(request: Request) {
@@ -68,11 +68,12 @@ export async function POST(request: Request) {
 
     // 30 days from now
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const amount = PLAN_PRICES[plan] ?? 0;
 
     const sub = await db.subscription.upsert({
       where: { userId: payload.userId },
-      update: { plan, status: 'ACTIVE', expiresAt, paymentRef, operator },
-      create: { userId: payload.userId, plan, status: 'ACTIVE', expiresAt, paymentRef, operator },
+      update: { plan, status: 'ACTIVE', expiresAt, paymentRef, operator, amount },
+      create: { userId: payload.userId, plan, status: 'ACTIVE', expiresAt, paymentRef, operator, amount },
     });
 
     return NextResponse.json({ success: true, data: sub });

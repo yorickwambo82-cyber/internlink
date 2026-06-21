@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 
         // Update the user's plan
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const amount = plan === 'PRO' ? 200 : 100;
         await db.subscription.upsert({
           where: { userId: userId },
           update: {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
             status: 'ACTIVE',
             expiresAt,
             paymentRef: transId,
+            amount,
           },
           create: {
             userId: userId,
@@ -52,6 +54,7 @@ export async function POST(request: Request) {
             status: 'ACTIVE',
             expiresAt,
             paymentRef: transId,
+            amount,
           },
         });
         

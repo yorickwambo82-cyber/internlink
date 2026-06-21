@@ -106,6 +106,7 @@ export default function AdminDashboard() {
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Settings state
@@ -118,13 +119,15 @@ export default function AdminDashboard() {
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const [statsRes, logsRes] = await Promise.all([
+      const [statsRes, logsRes, paymentsRes] = await Promise.all([
         fetch('/api/admin/stats', { headers }),
         fetch('/api/admin/audit-logs?limit=5', { headers }),
+        fetch('/api/admin/payments', { headers }),
       ]);
 
       const statsData = await statsRes.json();
       const logsData = await logsRes.json();
+      const paymentsData = await paymentsRes.json();
 
       if (statsData.success) {
         const d = statsData.data;
@@ -145,6 +148,10 @@ export default function AdminDashboard() {
 
       if (logsData.success) {
         setAuditLogs(logsData.data.logs || []);
+      }
+
+      if (paymentsData.success) {
+        setPayments(paymentsData.data || []);
       }
     } catch (err) {
       console.error('Failed to fetch admin dashboard data:', err);
@@ -510,6 +517,68 @@ export default function AdminDashboard() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Payment Logs */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-green-500" /> Payment Logs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payments.length === 0 ? (
+              <EmptyState
+                icon={Banknote}
+                title="No payments yet"
+                description="Successful subscriptions will appear here."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 font-medium rounded-tl-lg">User</th>
+                      <th className="px-4 py-3 font-medium">Plan</th>
+                      <th className="px-4 py-3 font-medium">Amount</th>
+                      <th className="px-4 py-3 font-medium">Method</th>
+                      <th className="px-4 py-3 font-medium">Ref</th>
+                      <th className="px-4 py-3 font-medium rounded-tr-lg">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y border-t">
+                    {payments.map((p) => (
+                      <tr key={p.id} className="hover:bg-accent/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{p.user?.name}</p>
+                          <p className="text-xs text-muted-foreground">{p.user?.email}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className="text-xs">
+                            {p.plan}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-green-600 dark:text-green-400">
+                          {p.amount?.toLocaleString() || 0} XAF
+                        </td>
+                        <td className="px-4 py-3">
+                          {p.operator || 'Fapshi'}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground truncate max-w-[120px]" title={p.paymentRef}>
+                          {p.paymentRef}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Admin Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>

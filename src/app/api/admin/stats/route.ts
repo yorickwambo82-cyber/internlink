@@ -54,17 +54,13 @@ export async function GET(request: Request) {
           },
         },
       }),
-      db.subscription.findMany({
-        where: { status: 'ACTIVE' },
-        select: { plan: true },
+      db.subscription.aggregate({
+        _sum: { amount: true },
+        where: { status: 'ACTIVE', plan: { not: 'STARTER' } },
       })
     ])
 
-    let totalRevenue = 0
-    activeSubscriptions.forEach(sub => {
-      if (sub.plan === 'SCHOLAR') totalRevenue += 5000
-      if (sub.plan === 'PRO') totalRevenue += 15000
-    })
+    const totalRevenue = activeSubscriptions._sum?.amount ?? 0
 
     return NextResponse.json({
       success: true,
