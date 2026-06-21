@@ -13,7 +13,7 @@ function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const { token, plan, setPlan } = useAuthStore();
   
-  const [status, setStatus] = useState<'checking' | 'success' | 'failed' | 'manual_required'>('checking');
+  const [status, setStatus] = useState<'checking' | 'success' | 'failed' | 'timeout'>('checking');
   const [attempts, setAttempts] = useState(0);
   const [paymentRef, setPaymentRef] = useState<string | null>(null);
   const [targetPlan, setTargetPlan] = useState<string>('Premium');
@@ -74,9 +74,10 @@ function PaymentStatusContent() {
     intervalId = setInterval(async () => {
       setAttempts((prev) => {
         const nextAttempt = prev + 1;
-        if (nextAttempt >= 6) {
+        // Wait up to 45 seconds (18 attempts)
+        if (nextAttempt >= 18) {
           clearInterval(intervalId);
-          setStatus('manual_required');
+          setStatus('timeout');
           return prev;
         }
         return nextAttempt;
@@ -132,11 +133,11 @@ function PaymentStatusContent() {
         }
       } else {
         toast.error(data.error || 'Manual activation failed.');
-        setStatus('manual_required');
+        setStatus('timeout');
       }
     } catch (err) {
       toast.error('Failed to trigger manual verification.');
-      setStatus('manual_required');
+      setStatus('timeout');
     }
   };
 
@@ -148,13 +149,13 @@ function PaymentStatusContent() {
             {status === 'checking' && 'Verifying Payment'}
             {status === 'success' && 'Payment Confirmed!'}
             {status === 'failed' && 'Payment Failed'}
-            {status === 'manual_required' && 'Webhook Pending'}
+            {status === 'timeout' && 'Verification Delayed'}
           </CardTitle>
           <CardDescription className="text-zinc-400">
             {status === 'checking' && `Waiting for payment confirmation for ${targetPlan} plan...`}
             {status === 'success' && `Successfully upgraded to ${targetPlan} plan!`}
             {status === 'failed' && 'Something went wrong with the transaction.'}
-            {status === 'manual_required' && 'Local development warning'}
+            {status === 'timeout' && 'We are still waiting for confirmation from the payment provider.'}
           </CardDescription>
         </CardHeader>
 
@@ -178,7 +179,7 @@ function PaymentStatusContent() {
             </div>
           )}
 
-          {status === 'manual_required' && (
+          {status === 'timeout' && (
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
               <Loader2 className="w-10 h-10 animate-spin" />
             </div>
@@ -198,14 +199,21 @@ function PaymentStatusContent() {
             </p>
           )}
 
-          {status === 'manual_required' && (
+          {status === 'timeout' && (
             <div className="space-y-4 w-full">
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-200">
-                <strong>Why is this happening?</strong> Webhook callbacks cannot reach your local <code>localhost:3000</code> server directly without an internet-accessible tunnel (like <em>ngrok</em>).
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-200">
+                <strong>Taking too long?</strong> Your payment is currently processing but verification is delayed. This usually happens if the network is slow.
               </div>
-              <Button onClick={handleManualActivate} className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#050d0a] font-bold">
-                Force Activate Subscription (Dev Mode)
+              <Button onClick={() => window.location.reload()} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium">
+                Check Status Again
               </Button>
+              
+              {/* Only show Force Activate on localhost for dev testing */}
+              {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                <Button onClick={handleManualActivate} className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#050d0a] font-bold mt-2">
+                  Force Activate Subscription (Dev Mode)
+                </Button>
+              )}
             </div>
           )}
 
